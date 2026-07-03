@@ -1,0 +1,29 @@
+[
+  {
+    "_case": "C1 동일정책(기관변형) — ontong과 매칭 기대",
+    "bizId": "MT-1001",
+    "policyName": "서울 청년 마음건강 지원사업",
+    "orgName": "서울시",
+    "regionName": "서울특별시",
+    "ageInfo": "19~34",
+    "incomeInfo": "중위소득 150% 이하",
+    "applyPeriod": "2026.06.01~2026.08.31",
+    "detailUrl": "https://youth.seoul.go.kr/MT-1001"
+  },
+  {
+    "_case": "C3 몽땅전용 — mongttangOnly 기대",
+    "bizId": "MT-1002",
+    "policyName": "청년 부동산 중개비 지원",
+    "orgName": "서울특별시",
+    "regionName": "서울특별시",
+    "ageInfo": "19~39",
+    "incomeInfo": "소득 무관",
+    "applyPeriod": "상시모집",
+    "detailUrl": "https://youth.seoul.go.kr/MT-1002"
+  },
+  {
+    "_case": "C7 깨진 항목 — throw 금지",
+    "bizId": null,
+    "policyName": null
+  }
+]

@@ -1,0 +1,61 @@
+import type { EvaluateResult } from '@/domain/eligibility';
+import type { GraphNode, UserProfile } from '@/domain/types';
+import type { LlmClient } from '@/data/parseChunk';
+import { PolicyResultCard, reviewLabels } from './PolicyResultCard';
+import { ChoiceChips } from './ChoiceChips';
+
+/**
+ * 결과 목록 — now/soon/review 카드 렌더(blocked만 미노출).
+ *
+ * 안전 불변식:
+ *  - result.now/soon/review를 카드화. review는 '자격 확인 필요'(보수 판정)로 노출한다.
+ *    blocked(명확한 부적격)만 화면에 누수 금지(헛희망 차단).
+ *    ※ Phase 5의 'review 미노출' 결정은 실데이터 대부분이 review로 분류돼 결과가
+ *      통째로 사라지는 문제 때문에 변경됨(사용자 승인, 2026-06-25). review는 자격을
+ *      단정하지 않고 '확인 필요'로만 제시하므로 보수성은 유지된다.
+ *  - 노출 가능한 결과(now/soon/review)가 0이고 대안(형제 노드)이 있으면 대안 갈래 칩으로 유도.
+ */
+export interface ResultListProps {
+  result: EvaluateResult | null;
+  alternatives: GraphNode[];
+  onSelectAlternative: (nodeId: string) => void;
+  /** 사용자 프로필(카드 체크리스트 "내 나이" 문구용). */
+  profile?: UserProfile;
+  /** (예약) '왜 맞는지' 설명 LLM — D-② 재배선용. 현재 카드에서 미사용. */
+  llm?: LlmClient;
+}
+
+export function ResultList({ result, alternatives, onSelectAlternative, profile, llm }: ResultListProps) {
+  const nowItems = result?.now ?? [];
+  const soonItems = result?.soon ?? [];
+  // review는 미확인 항목이 적은(=적격에 가까운) 순으로 노출 — '거의 충족'을 위로.
+  const reviewItems = [...(result?.review ?? [])].sort(
+    (a, b) => reviewLabels(a.reasons).length - reviewLabels(b.reasons).length,
+  );
+  const showable = nowItems.length + soonItems.length + reviewItems.length;
+
+  if (showable > 0) {
+    return (
+      <div data-funnel-region="results" className="space-y-3">
+        {nowItems.map((item, i) => (
+          <PolicyResultCard key={item.policy?.id ?? `now-${i}`} item={item} status="now" profile={profile} llm={llm} />
+        ))}
+        {soonItems.map((item, i) => (
+          <PolicyResultCard key={item.policy?.id ?? `soon-${i}`} item={item} status="soon" profile={profile} llm={llm} />
+        ))}
+        {reviewItems.map((item, i) => (
+          <PolicyResultCard key={item.policy?.id ?? `review-${i}`} item={item} status="review" profile={profile} llm={llm} />
+        ))}
+      </div>
+    );
+  }
+
+  // 노출 가능한 결과 0 → 대안 갈래로 유도(blocked/review 직노출 금지).
+  const alts = Array.isArray(alternatives) ? alternatives : [];
+  return (
+    <div data-testid="alternatives" data-funnel-region="alternatives" className="space-y-3">
+      <p className="text-sm text-sand-600">이 방향으론 못 찾았어요. 이런 쪽은 어때요?</p>
+      {alts.length > 0 ? <ChoiceChips choices={alts} onSelect={onSelectAlternative} /> : null}
+    </div>
+  );
+}

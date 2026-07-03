@@ -1,0 +1,75 @@
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { CachedPolicy, PolicyCache } from './types';
+import { toRow, fromRow } from './supabaseMapping';
+
+/**
+ * Supabase 구현 PolicyCache (운영). LocalJsonCache와 동일 계약 뒤.
+ *  - service_role 키 사용(RLS 우회) — 인제스트(서버) 전용. 클라이언트 금지.
+ *  - writeAll = upsert(onConflict id). 대량은 청크.
+ *  - 순수 매핑(toRow/fromRow)은 supabaseMapping.ts(테스트). 이 파일은 실 SDK 경계 → 커버리지 제외.
+ *
+ * ★실 네트워크 경계: 결정적 게이트(키 0) 미도달.
+ */
+
+/* c8 ignore start -- 실 Supabase SDK 경계: 키 있는 환경 전용. */
+const TABLE = 'policies';
+const CHUNK = 500;
+
+export class SupabaseCache implements PolicyCache {
+  private client: SupabaseClient;
+  private table: string;
+
+  constructor(url: string, serviceKey: string, table = TABLE) {
+    this.client = createClient(url, serviceKey, { auth: { persistSession: false } });
+    this.table = table;
+  }
+
+  async readAll(): Promise<CachedPolicy[]> {
+    // PostgREST 기본 행 상한(1000) 대응 — range로 페이지네이션해 전량 수집(증분 정확성).
+    const PAGE = 1000;
+    const all: CachedPolicy[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await this.client
+        .from(this.table)
+        .select('*')
+        .range(from, from + PAGE - 1);
+      if (error) throw new Error(`SupabaseCache.readAll: ${error.message}`);
+      const rows = data ?? [];
+      for (const r of rows) all.push(fromRow(r));
+      if (rows.length < PAGE) break;
+    }
+    return all;
+  }
+
+  async getById(id: string): Promise<CachedPolicy | null> {
+    const { data, error } = await this.client
+      .from(this.table)
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(`SupabaseCache.getById: ${error.message}`);
+    return data ? fromRow(data) : null;
+  }
+
+  async getByHash(hash: string): Promise<CachedPolicy | null> {
+    const { data, error } = await this.client
+      .from(this.table)
+      .select('*')
+      .eq('content_hash', hash)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(`SupabaseCache.getByHash: ${error.message}`);
+    return data ? fromRow(data) : null;
+  }
+
+  async writeAll(policies: CachedPolicy[]): Promise<void> {
+    const rows = policies.map(toRow);
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const { error } = await this.client
+        .from(this.table)
+        .upsert(rows.slice(i, i + CHUNK), { onConflict: 'id' });
+      if (error) throw new Error(`SupabaseCache.writeAll: ${error.message}`);
+    }
+  }
+}
+/* c8 ignore stop */

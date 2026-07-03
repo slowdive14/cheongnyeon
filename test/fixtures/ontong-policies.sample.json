@@ -1,0 +1,210 @@
+[
+  {
+    "_case": "S1-a 연령 정상 범위 표기 19~34",
+    "id": "ON-0001",
+    "title": "서울 청년 마음건강 지원사업",
+    "summary": "전문 심리상담 바우처 지원",
+    "ageText": "19~34",
+    "incomeText": "소득 무관",
+    "regionText": "서울특별시",
+    "recruitStartText": "2026-06-01",
+    "recruitEndText": "2026-08-31",
+    "category": "마음건강",
+    "sourceUrl": "https://www.youthcenter.go.kr/policy/ON-0001",
+    "source": "ontong"
+  },
+  {
+    "_case": "S1-b 연령 만N세 표기",
+    "id": "ON-0002",
+    "title": "만세 표기 정책",
+    "ageText": "만 19세~만 34세",
+    "incomeText": "중위소득 150% 이하",
+    "regionText": "서울특별시 강남구",
+    "recruitText": "2026.06.01~2026.08.31",
+    "sourceUrl": "https://www.youthcenter.go.kr/policy/ON-0002",
+    "source": "ontong"
+  },
+  {
+    "_case": "S1-c 연령 숫자 직접 제공",
+    "id": "ON-0003",
+    "title": "숫자 직접 연령",
+    "ageMin": 19,
+    "ageMax": 34,
+    "incomeText": "",
+    "regionText": "전국",
+    "recruitText": "상시모집",
+    "source": "ontong"
+  },
+  {
+    "_case": "S1-d 상한만 34세 이하",
+    "id": "ON-0004",
+    "title": "상한만 존재",
+    "ageText": "34세 이하",
+    "regionText": "부산광역시",
+    "source": "ontong"
+  },
+  {
+    "_case": "S1-e 하한만 19세 이상",
+    "id": "ON-0005",
+    "title": "하한만 존재",
+    "ageText": "19세 이상",
+    "source": "ontong"
+  },
+  {
+    "_case": "S1-f 제한없음",
+    "id": "ON-0006",
+    "title": "연령 제한 없음",
+    "ageText": "제한없음",
+    "source": "ontong"
+  },
+  {
+    "_case": "S2-a 빈 연령 문자열",
+    "id": "ON-0007",
+    "title": "빈 연령",
+    "ageText": "",
+    "source": "ontong"
+  },
+  {
+    "_case": "S2-b 파싱불가 한글 연령",
+    "id": "ON-0008",
+    "title": "서른넷",
+    "ageText": "서른넷",
+    "source": "ontong"
+  },
+  {
+    "_case": "S2-c 역순 연령 34~19",
+    "id": "ON-0009",
+    "title": "역순 연령",
+    "ageText": "34~19",
+    "source": "ontong"
+  },
+  {
+    "_case": "S3-a 중위소득 비율",
+    "id": "ON-0010",
+    "title": "중위소득 정책",
+    "incomeText": "중위소득 150% 이하",
+    "source": "ontong"
+  },
+  {
+    "_case": "S3-b 소득 무관",
+    "id": "ON-0011",
+    "title": "소득 무관 정책",
+    "incomeText": "소득 무관",
+    "source": "ontong"
+  },
+  {
+    "_case": "S3-c 소득 텍스트 누락 (unknown, none 아님)",
+    "id": "ON-0012",
+    "title": "소득 누락 정책",
+    "source": "ontong"
+  },
+  {
+    "_case": "S3-d 소득 텍스트 있으나 숫자 없음 (unknown + raw 보존)",
+    "id": "ON-0013",
+    "title": "숫자 없는 소득",
+    "incomeText": "별도 심사 후 결정",
+    "source": "ontong"
+  },
+  {
+    "_case": "S4-a 서울특별시",
+    "id": "ON-0014",
+    "title": "서울 정책",
+    "regionText": "서울특별시",
+    "source": "ontong"
+  },
+  {
+    "_case": "S4-b 서울 자치구",
+    "id": "ON-0015",
+    "title": "강남구 정책",
+    "regionText": "서울특별시 강남구",
+    "source": "ontong"
+  },
+  {
+    "_case": "S4-c 전국",
+    "id": "ON-0016",
+    "title": "전국 정책",
+    "regionText": "전국",
+    "source": "ontong"
+  },
+  {
+    "_case": "S4-d 지역 누락 (보수: 빈 배열, 전국 아님)",
+    "id": "ON-0017",
+    "title": "지역 누락 정책",
+    "source": "ontong"
+  },
+  {
+    "_case": "S4-e 부산 (서울 미포함)",
+    "id": "ON-0018",
+    "title": "부산 정책",
+    "regionText": "부산광역시",
+    "source": "ontong"
+  },
+  {
+    "_case": "S5-a ISO start/end 직접",
+    "id": "ON-0019",
+    "title": "ISO 모집기간",
+    "recruitStartText": "2026-06-01",
+    "recruitEndText": "2026-08-31",
+    "source": "ontong"
+  },
+  {
+    "_case": "S5-b 점 구분 단일 텍스트",
+    "id": "ON-0020",
+    "title": "점 구분 모집기간",
+    "recruitText": "2026.06.01~2026.08.31",
+    "source": "ontong"
+  },
+  {
+    "_case": "S5-c 상시모집",
+    "id": "ON-0021",
+    "title": "상시 모집",
+    "recruitText": "상시모집",
+    "source": "ontong"
+  },
+  {
+    "_case": "S5-d 모집기간 누락",
+    "id": "ON-0022",
+    "title": "모집기간 누락",
+    "source": "ontong"
+  },
+  {
+    "_case": "S5-e 깨진 날짜 (Invalid Date 방어)",
+    "id": "ON-0023",
+    "title": "깨진 날짜",
+    "recruitStartText": "2026-13-99",
+    "recruitEndText": "쓰레기값",
+    "source": "ontong"
+  },
+  {
+    "_case": "S5-f 역전 모집기간 (end < start)",
+    "id": "ON-0024",
+    "title": "역전 모집기간",
+    "recruitStartText": "2026-08-31",
+    "recruitEndText": "2026-06-01",
+    "source": "ontong"
+  },
+  {
+    "_case": "S6-a 깨진 fixture: id/title null",
+    "id": null,
+    "title": null,
+    "source": "ontong"
+  },
+  {
+    "_case": "S6-b 깨진 fixture: 빈 객체 형태 (필수 키 없음)",
+    "source": "ontong"
+  },
+  {
+    "_case": "S7-a sourceUrl 누락",
+    "id": "ON-0025",
+    "title": "소스 URL 누락",
+    "source": "ontong"
+  },
+  {
+    "_case": "S7-b source 라벨 mongttang",
+    "id": "MT-0001",
+    "title": "몽땅 보강 정책",
+    "regionText": "서울특별시",
+    "sourceUrl": "https://youth.seoul.go.kr/MT-0001",
+    "source": "mongttang"
+  }
+]

@@ -1,0 +1,55 @@
+# 정책 자동 수집 배치 (Phase A) — 온통청년 전량 증분 인제스트 → Supabase.
+#
+# 주기: 주 2회, 월·목 새벽 04:00 KST (= 일·수 19:00 UTC). 수동 실행(workflow_dispatch) 가능.
+# 증분: contentHash 기반 — 변경분만 Gemini(파싱·설명·임베딩) 호출. 평시 비용 몇 원 수준.
+# 실패 알림: Actions 기본 실패 메일(저장소 소유자). 로그 요약은 Step Summary에 기록.
+#
+# 필요 Secrets (Settings → Secrets and variables → Actions):
+#   ONTONG_API_KEY / GEMINI_API_KEY / SUPABASE_URL / SUPABASE_SERVICE_KEY
+name: ingest-policies
+
+on:
+  schedule:
+    - cron: '0 19 * * 0,3' # 일·수 19:00 UTC = 월·목 04:00 KST
+  workflow_dispatch: {}
+
+# 동시 실행 방지(중복 적재 금지). 진행 중이면 새 실행은 대기·중복 취소 없이 직렬화.
+concurrency:
+  group: ingest-policies
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90 # 전량 재처리(최악) ~44분 + 여유. 증분 평시는 수 분.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ingest (incremental)
+        env:
+          ONTONG_API_KEY: ${{ secrets.ONTONG_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          INGEST_CONCURRENCY: '12'
+        run: |
+          set -o pipefail
+          npm run ingest 2>&1 | tee ingest.log
+
+      - name: Write run summary
+        if: always()
+        run: |
+          {
+            echo "## 인제스트 실행 요약"
+            echo '```'
+            tail -n 40 ingest.log 2>/dev/null || echo "(로그 없음)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

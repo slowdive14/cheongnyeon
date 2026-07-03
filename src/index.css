@@ -1,0 +1,16 @@
+/* Pretendard 웹폰트(CDN). 로드 실패(오프라인) 시 font-sans 폴백 시스템 스택으로 자동 강등(DESIGN §3). */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 전역 폰트: 토큰 스택(Pretendard→시스템). CDN 미로드 시에도 시스템 폰트로 정상 표시. */
+@layer base {
+  html {
+    font-family: theme('fontFamily.sans');
+    /* 페이지 캔버스도 크림(DESIGN §2 cream-50) — main(max-w-xl) 바깥 영역이 브라우저
+       기본색(다크 모드 등)으로 새지 않게 문서 루트에서 고정. */
+    background-color: theme('colors.cream.50');
+  }
+}

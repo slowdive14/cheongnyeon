@@ -1,0 +1,46 @@
+[
+  {
+    "_case": "P4 ON-0001 중복(=P1) — source+id 1차 키 병합. 갱신본(lastModified 최신)",
+    "id": "ON-0001",
+    "title": "서울 청년 마음건강 지원사업",
+    "summary": "전문 심리상담 바우처 지원 (확대)",
+    "ageText": "19~34",
+    "incomeText": "중위소득 150% 이하",
+    "regionText": "서울특별시",
+    "recruitStartText": "2026-06-01",
+    "recruitEndText": "2026-09-30",
+    "category": "마음건강",
+    "sourceUrl": "https://www.youthcenter.go.kr/policy/ON-0001",
+    "lastModified": "2026-06-10",
+    "source": "ontong"
+  },
+  {
+    "_case": "P5 ON-0004 전국 (isNationwide 통과)",
+    "id": "ON-0004",
+    "title": "전국 청년 도전 지원금",
+    "ageText": "19~34",
+    "incomeText": "소득 무관",
+    "regionText": "전국",
+    "recruitText": "상시모집",
+    "category": "일자리",
+    "sourceUrl": "https://www.youthcenter.go.kr/policy/ON-0004",
+    "lastModified": "2026-05-04",
+    "source": "ontong"
+  },
+  {
+    "_case": "P6 ON-0005 다른 id, 같은 정규화명+기관, 서울 (2차 키 동일 → 자동병합 금지, 수동후보)",
+    "id": "ON-0005",
+    "title": "서울 청년 마음건강 지원사업",
+    "summary": "동일 정책명·기관, 다른 id",
+    "ageText": "19~34",
+    "incomeText": "중위소득 150% 이하",
+    "regionText": "서울특별시",
+    "recruitStartText": "2026-06-01",
+    "recruitEndText": "2026-08-31",
+    "category": "마음건강",
+    "sourceUrl": "https://www.youthcenter.go.kr/policy/ON-0005",
+    "orgName": "서울특별시",
+    "lastModified": "2026-05-05",
+    "source": "ontong"
+  }
+]

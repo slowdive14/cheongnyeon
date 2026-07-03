@@ -1,0 +1,42 @@
+[
+  {
+    "_case": "P1 ON-0001 서울 신규",
+    "id": "ON-0001",
+    "title": "서울 청년 마음건강 지원사업",
+    "summary": "전문 심리상담 바우처 지원",
+    "ageText": "19~34",
+    "incomeText": "중위소득 150% 이하",
+    "regionText": "서울특별시",
+    "recruitStartText": "2026-06-01",
+    "recruitEndText": "2026-08-31",
+    "category": "마음건강",
+    "sourceUrl": "https://www.youthcenter.go.kr/policy/ON-0001",
+    "orgName": "서울특별시",
+    "lastModified": "2026-05-01",
+    "source": "ontong"
+  },
+  {
+    "_case": "P2 ON-0002 강남구 (자치구명 매칭)",
+    "id": "ON-0002",
+    "title": "강남구 청년 월세 지원",
+    "ageText": "만 19세~만 34세",
+    "incomeText": "중위소득 120% 이하",
+    "regionText": "강남구",
+    "recruitText": "2026.06.01~2026.08.31",
+    "category": "주거",
+    "sourceUrl": "https://www.youthcenter.go.kr/policy/ON-0002",
+    "lastModified": "2026-05-02",
+    "source": "ontong"
+  },
+  {
+    "_case": "P3 ON-0003 부산 (탈락)",
+    "id": "ON-0003",
+    "title": "부산 청년 정책",
+    "ageText": "19~39",
+    "regionText": "부산광역시",
+    "category": "일자리",
+    "sourceUrl": "https://www.youthcenter.go.kr/policy/ON-0003",
+    "lastModified": "2026-05-03",
+    "source": "ontong"
+  }
+]

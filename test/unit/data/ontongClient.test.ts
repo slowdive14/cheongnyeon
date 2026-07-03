@@ -1,0 +1,215 @@
+import { describe, it, expect, vi } from 'vitest';
+import {
+  createOntongClient,
+  parseResponse,
+  parseGetPlcy,
+  adaptOntongItem,
+  pickSourceUrl,
+  ontongDetailUrl,
+} from '@/data/ontongClient';
+
+/**
+ * Task 2.5 / 실 API 보정 — ontongClient (fixture/live 격리 + getPlcy 어댑터)
+ * 키 없으면 fixture(2페이지 병합), 키 있으면 현행 getPlcy(JSON) → adaptOntongItem → 페이지 루프.
+ */
+
+describe('createOntongClient (fixture 모드)', () => {
+  it('키 없으면 fixture 2페이지를 병합해 반환(6건)', async () => {
+    const client = createOntongClient({});
+    const items = await client.fetchAll();
+    expect(items.length).toBe(6);
+  });
+
+  it('fixture:true 강제 시에도 fixture', async () => {
+    const client = createOntongClient({ apiKey: 'KEY', fixture: true });
+    const items = await client.fetchAll();
+    expect(items.length).toBe(6);
+  });
+});
+
+describe('createOntongClient (live getPlcy, fetch 주입)', () => {
+  function plcyPage(items: unknown[], totCount: number): string {
+    return JSON.stringify({ result: { pagging: { totCount }, youthPolicyList: items } });
+  }
+
+  it('페이지 수는 1페이지 totCount로 고정, 어댑팅해 누적', async () => {
+    const pages = [
+      plcyPage([{ plcyNo: 'A', plcyNm: 'a' }, { plcyNo: 'B', plcyNm: 'b' }], 3),
+      plcyPage([{ plcyNo: 'C', plcyNm: 'c' }], 3),
+    ];
+    let call = 0;
+    const fetchImpl = vi.fn(async () => {
+      const body = pages[call] ?? plcyPage([], 3);
+      call += 1;
+      return { text: async () => body } as Response;
+    });
+    const client = createOntongClient({ apiKey: 'KEY', fetchImpl, pageSize: 2 });
+    const items = await client.fetchAll();
+    expect(items).toHaveLength(3); // ceil(3/2)=2 페이지.
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect((items[0] as Record<string, unknown>).id).toBe('A');
+    expect((items[0] as Record<string, unknown>).source).toBe('ontong');
+  });
+
+  it('중간 빈 페이지가 전체를 절단하지 않음(일시 실패 견고성)', async () => {
+    const pages = [
+      plcyPage([{ plcyNo: 'A', plcyNm: 'a' }, { plcyNo: 'B', plcyNm: 'b' }], 5),
+      plcyPage([], 5), // 일시적 빈 응답.
+      plcyPage([{ plcyNo: 'C', plcyNm: 'c' }, { plcyNo: 'D', plcyNm: 'd' }], 5),
+    ];
+    let call = 0;
+    const fetchImpl = vi.fn(async () => {
+      const body = pages[call] ?? plcyPage([], 5);
+      call += 1;
+      return { text: async () => body } as Response;
+    });
+    const client = createOntongClient({ apiKey: 'KEY', fetchImpl, pageSize: 2 });
+    const items = await client.fetchAll();
+    // ceil(5/2)=3 페이지 전부 시도 → 빈 2페이지 건너뛰고 4건(절단 없음).
+    expect(items).toHaveLength(4);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('1페이지가 비면 종료', async () => {
+    const fetchImpl = vi.fn(async () => ({ text: async () => plcyPage([], 0) }) as Response);
+    const client = createOntongClient({ apiKey: 'KEY', fetchImpl });
+    const items = await client.fetchAll();
+    expect(items).toHaveLength(0);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('parseGetPlcy', () => {
+  it('정상 getPlcy → items + totCount', () => {
+    const body = JSON.stringify({
+      result: { pagging: { totCount: 2 }, youthPolicyList: [{ a: 1 }, { a: 2 }] },
+    });
+    const { items, totCount } = parseGetPlcy(body);
+    expect(items).toHaveLength(2);
+    expect(totCount).toBe(2);
+  });
+
+  it('비 JSON/구조 이탈 → 빈 결과(throw 금지)', () => {
+    expect(parseGetPlcy('<xml/>')).toEqual({ items: [], totCount: 0 });
+    expect(parseGetPlcy('{"result":{}}')).toEqual({ items: [], totCount: 0 });
+  });
+});
+
+describe('adaptOntongItem (실 항목 → raw 스키마)', () => {
+  const REAL = {
+    plcyNo: '20260622005400213244',
+    plcyNm: '청년 마음건강 심리상담 바우처',
+    plcyExplnCn: '심리상담 비용을 지원',
+    lclsfNm: '금융･복지･문화',
+    mclsfNm: '건강',
+    plcyKywdNm: '바우처',
+    sprtTrgtMinAge: '19',
+    sprtTrgtMaxAge: '34',
+    earnCndSeCd: '0043001',
+    earnEtcCn: '',
+    rgtrInstCdNm: '서울특별시',
+    sprvsnInstCdNm: '서울특별시 미래청년기획관',
+    aplyYmd: '20260615 ~ 20260624',
+    aplyUrlAddr: 'https://example.go.kr/p',
+    lastMdfcnDt: '2026-06-23 13:50:23',
+  };
+
+  it('핵심 필드 매핑', () => {
+    const r = adaptOntongItem(REAL);
+    expect(r.id).toBe('20260622005400213244');
+    expect(r.title).toBe('청년 마음건강 심리상담 바우처');
+    expect(r.ageMin).toBe(19);
+    expect(r.ageMax).toBe(34);
+    expect(r.incomeText).toBe('소득 무관'); // 0043001
+    expect(r.regionText).toBe('서울특별시');
+    expect(r.recruitStartText).toBe('2026-06-15');
+    expect(r.recruitEndText).toBe('2026-06-24');
+    expect(r.category).toBe('마음건강'); // 강한 복합어/중분류'건강'+용어
+    // 원문 = 온통청년 정책 상세 정본(plcyNo). 신청/참고 URL이 있어도 정본을 쓴다.
+    expect(r.sourceUrl).toBe(
+      'https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/20260622005400213244',
+    );
+    expect(r.lastModified).toBe('2026-06-23');
+    expect(r.source).toBe('ontong');
+  });
+
+  it('비-마음건강은 대분류(lclsfNm)로', () => {
+    const r = adaptOntongItem({ plcyNo: 'X', plcyNm: '청년 취업지원', lclsfNm: '일자리', mclsfNm: '취업' });
+    expect(r.category).toBe('일자리');
+  });
+
+  it('범용 키워드(맞춤형상담서비스)만으론 마음건강 오분류 안 함', () => {
+    const r = adaptOntongItem({
+      plcyNo: 'Y',
+      plcyNm: '청년 창업 지원',
+      lclsfNm: '일자리',
+      mclsfNm: '창업',
+      plcyKywdNm: '맞춤형상담서비스',
+    });
+    expect(r.category).toBe('일자리');
+  });
+
+  it('소득 불명은 none으로 단정하지 않음(0043001 외)', () => {
+    const r = adaptOntongItem({ plcyNo: 'Z', plcyNm: 't', earnCndSeCd: '0043002', earnEtcCn: '' });
+    expect(r.incomeText).toBeUndefined(); // → normalizePolicy에서 unknown(보수)
+  });
+
+  it('원문 = 온통청년 상세 정본(plcyNo) — 신청/참고 URL 있어도 정본 우선', () => {
+    const r = adaptOntongItem({
+      plcyNo: '20260415005400112751',
+      plcyNm: '청년 정신건강 지원',
+      aplyUrlAddr: 'https://www.bokjiro.go.kr',
+      refUrlAddr1: 'https://youth.incheon.go.kr/p?seq=196',
+    });
+    expect(r.sourceUrl).toBe(
+      'https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/20260415005400112751',
+    );
+  });
+
+  it('plcyNo 없으면 원본 URL 폴백(딥링크 우선)', () => {
+    const r = adaptOntongItem({
+      plcyNm: 't',
+      aplyUrlAddr: 'https://www.bokjiro.go.kr',
+      refUrlAddr1: 'https://x.go.kr/a/b?c=1',
+    });
+    expect(r.sourceUrl).toBe('https://x.go.kr/a/b?c=1');
+  });
+});
+
+describe('pickSourceUrl / ontongDetailUrl', () => {
+  it('pickSourceUrl: 도메인 홈보다 구체 딥링크 우선', () => {
+    expect(pickSourceUrl('https://www.bokjiro.go.kr', 'https://x.go.kr/view.do?seq=196')).toBe(
+      'https://x.go.kr/view.do?seq=196',
+    );
+  });
+  it('pickSourceUrl: 모두 도메인 홈이면 첫값, 전부 비면 undefined', () => {
+    expect(pickSourceUrl('https://www.bokjiro.go.kr', 'https://www.129.go.kr/')).toBe(
+      'https://www.bokjiro.go.kr',
+    );
+    expect(pickSourceUrl('', '   ')).toBeUndefined();
+  });
+  it('deriveRegionText: zipCd prefix → 시·도 명칭(P2A)', () => {
+    expect(adaptOntongItem({ plcyNo: 'A', plcyNm: 't', zipCd: '26110' }).regionText).toBe('부산광역시');
+    expect(adaptOntongItem({ plcyNo: 'B', plcyNm: 't', zipCd: '41110,41130' }).regionText).toBe('경기도');
+    expect(adaptOntongItem({ plcyNo: 'C', plcyNm: 't', zipCd: '51110' }).regionText).toBe('강원특별자치도');
+  });
+
+  it('ontongDetailUrl: plcyNo 경로 세그먼트, 빈값은 undefined', () => {
+    expect(ontongDetailUrl('20250316005400210633')).toBe(
+      'https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/20250316005400210633',
+    );
+    expect(ontongDetailUrl('')).toBeUndefined();
+  });
+});
+
+describe('parseResponse (구 헬퍼 — 하위호환 유지)', () => {
+  it('JSON 배열 직접', () => {
+    expect(parseResponse('[{"id":"A"}]')).toHaveLength(1);
+  });
+  it('youthPolicyList 래핑', () => {
+    expect(parseResponse('{"youthPolicyList":[{"id":"A"},{"id":"B"}]}')).toHaveLength(2);
+  });
+  it('비 JSON → 빈 배열', () => {
+    expect(parseResponse('<xml></xml>')).toEqual([]);
+  });
+});

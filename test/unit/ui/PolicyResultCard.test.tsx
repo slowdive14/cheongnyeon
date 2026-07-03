@@ -1,0 +1,259 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { PolicyResultCard } from '@/ui/funnel/PolicyResultCard';
+import type { EvaluatedPolicy } from '@/domain/eligibility';
+import type { Policy, UserProfile } from '@/domain/types';
+import type { CachedPolicy } from '@/data/cache/types';
+import type { AxisResult } from '@/domain/eligibility';
+import type { LlmClient } from '@/data/parseChunk';
+
+function policy(over: Partial<CachedPolicy> = {}): CachedPolicy {
+  return {
+    id: 'p1',
+    title: '서울 청년 마음건강 지원사업',
+    summary: '심리상담 바우처',
+    ageMin: 19,
+    ageMax: 39,
+    income: { kind: 'none', raw: null },
+    regionCodes: [],
+    regionText: null,
+    isNationwide: true,
+    recruit: { kind: 'always', start: null, end: null },
+    category: '마음건강',
+    sourceUrl: 'https://example.com/p1',
+    source: 'ontong',
+    fetchedAt: '2026-06-24T00:00:00Z',
+    updatedAt: '2026-06-20T00:00:00Z',
+    contentHash: 'h',
+    parsed: null,
+    ...over,
+  };
+}
+
+function item(over: Partial<CachedPolicy> = {}): EvaluatedPolicy {
+  return { policy: policy(over) as Policy, reasons: [], recruitStatus: 'now' };
+}
+
+describe('PolicyResultCard', () => {
+  it('status=now → 지금 배지(확정 문구), title 노출', () => {
+    render(<PolicyResultCard item={item()} status="now" />);
+    expect(screen.getByText('서울 청년 마음건강 지원사업')).toBeInTheDocument();
+    expect(screen.getByText(/지금/)).toBeInTheDocument();
+    expect(screen.getByText('지금 바로 신청돼요')).toBeInTheDocument();
+  });
+
+  it('status=soon → 곧 배지(확정 문구 "곧 신청이 열려요")', () => {
+    render(<PolicyResultCard item={item()} status="soon" />);
+    expect(screen.getByText(/곧/)).toBeInTheDocument();
+    expect(screen.getByText('곧 신청이 열려요')).toBeInTheDocument();
+  });
+
+  it('status=review 다수 → "몇 가지만 확인하면 돼요"(부적격 단정 없음, 원문·고지 유지)', () => {
+    const reviewItem: EvaluatedPolicy = {
+      policy: policy() as Policy,
+      reasons: ['AGE_UNKNOWN', 'RECRUIT_UNKNOWN'],
+      recruitStatus: 'unknown',
+    };
+    render(<PolicyResultCard item={reviewItem} status="review" />);
+    expect(screen.getByText('서울 청년 마음건강 지원사업')).toBeInTheDocument();
+    expect(screen.getByText(/몇 가지만 확인하면 돼요/)).toBeInTheDocument();
+    // 탈락/부적격 단정 금지(보수 판정).
+    expect(screen.queryByText(/막힘|부적격|탈락/)).toBeNull();
+    expect(screen.queryByText(/자격이 (됩|안 됩)/)).toBeNull();
+    // 원문 링크 + '추정' 고지 유지.
+    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.com/p1');
+    expect(screen.getByText(/추정/)).toBeInTheDocument();
+  });
+
+  it('status=review 단일 사유 → "거의 다 왔어요 — ○○만 확인" (등급화)', () => {
+    const nearItem: EvaluatedPolicy = {
+      policy: policy() as Policy,
+      reasons: ['RECRUIT_UNKNOWN'],
+      recruitStatus: 'unknown',
+    };
+    render(<PolicyResultCard item={nearItem} status="review" />);
+    expect(screen.getByText(/거의 다 왔어요/)).toBeInTheDocument();
+    expect(screen.getByText(/모집 시기만 확인/)).toBeInTheDocument();
+    // 부적격 단정 없음.
+    expect(screen.queryByText(/막힘|부적격|탈락/)).toBeNull();
+  });
+
+  it("'추정' 고지 포함", () => {
+    render(<PolicyResultCard item={item()} status="now" />);
+    expect(screen.getByText(/추정/)).toBeInTheDocument();
+  });
+
+  it('sourceUrl 있으면 원문 링크', () => {
+    render(<PolicyResultCard item={item()} status="now" />);
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', 'https://example.com/p1');
+  });
+
+  it('sourceUrl=null → 링크 미생성, throw 없음', () => {
+    expect(() =>
+      render(<PolicyResultCard item={item({ sourceUrl: null })} status="now" />),
+    ).not.toThrow();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('updatedAt 있으면 최종 업데이트 표시', () => {
+    render(<PolicyResultCard item={item()} status="now" />);
+    expect(screen.getByText(/업데이트/)).toBeInTheDocument();
+  });
+
+  it('updatedAt 없으면(폴백) 업데이트 미표시, throw 없음', () => {
+    // 신선도 없는 합성 Policy(CachedPolicy 아님).
+    const plain: EvaluatedPolicy = {
+      policy: policy({ updatedAt: undefined as unknown as string }) as Policy,
+      reasons: [],
+      recruitStatus: 'now',
+    };
+    expect(() => render(<PolicyResultCard item={plain} status="now" />)).not.toThrow();
+    expect(screen.queryByText(/업데이트/)).toBeNull();
+  });
+
+  it('title=null → 폴백(throw 없음)', () => {
+    expect(() =>
+      render(<PolicyResultCard item={item({ title: null as unknown as string })} status="now" />),
+    ).not.toThrow();
+  });
+
+  it('updatedAt 깨진 문자열 → 미표시(throw 없음)', () => {
+    render(<PolicyResultCard item={item({ updatedAt: 'not-a-date' })} status="now" />);
+    expect(screen.queryByText(/업데이트/)).toBeNull();
+  });
+
+  it('summary 없음 → throw 없이 렌더', () => {
+    expect(() =>
+      render(<PolicyResultCard item={item({ summary: null })} status="now" />),
+    ).not.toThrow();
+  });
+
+  it('막힘/부적격 문구 미포함', () => {
+    render(<PolicyResultCard item={item()} status="now" />);
+    expect(screen.queryByText(/막힘|부적격|탈락/)).toBeNull();
+  });
+
+  it('정책 영역(category) 배지 표시 — 교차 영역 결과 식별', () => {
+    render(<PolicyResultCard item={item({ category: '주거' })} status="now" />);
+    expect(screen.getByTestId('policy-category')).toHaveTextContent('주거');
+  });
+
+  // T-D1c — "왜 맞을까요" prose 표시 제거(Q-3: 표시 제거 + 호출 정지, 정의는 D-② 대비 보존).
+  it('T-D1c: llm 없으면 설명 미표시', () => {
+    render(<PolicyResultCard item={item()} status="now" />);
+    expect(screen.queryByTestId('policy-explanation')).toBeNull();
+  });
+
+  it('T-D1c: stored explanation 있어도 policy-explanation 미표시(표시 제거)', () => {
+    const stored: EvaluatedPolicy = {
+      policy: policy({ explanation: '미리 만든 설명입니다.' }) as Policy,
+      reasons: [],
+      recruitStatus: 'now',
+    };
+    render(<PolicyResultCard item={stored} status="now" />);
+    expect(screen.queryByTestId('policy-explanation')).toBeNull();
+    expect(screen.queryByText('미리 만든 설명입니다.')).toBeNull();
+  });
+
+  it('T-D1c: llm 있어도 "왜 맞을까요/왜 맞는지" prose 미표시(호출 정지)', () => {
+    const llm: LlmClient = {
+      generateStructured: vi.fn(async () => ({ text: '마음건강 관련이라 도움이 될 수 있어 보여요.' })),
+    };
+    render(<PolicyResultCard item={item()} status="now" llm={llm} />);
+    expect(screen.queryByTestId('policy-explanation')).toBeNull();
+    expect(screen.queryByText(/왜 맞을까요|왜 맞는지/)).toBeNull();
+    // 런타임 호출 정지(불필요 비동기·네트워크 0).
+    expect(llm.generateStructured).not.toHaveBeenCalled();
+  });
+});
+
+describe('T-F1 절벽 완화 카피(신청 페이지 열기 + 브리지)', () => {
+  it('sourceUrl 있으면 "신청 페이지 열기 (온통청년)" + 브리지 문구', () => {
+    render(<PolicyResultCard item={item()} status="now" />);
+    expect(screen.getByText('신청 페이지 열기 (온통청년)')).toBeInTheDocument();
+    expect(screen.getByText(/‘신청하기’ 버튼을 찾으면 돼요/)).toBeInTheDocument();
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer noopener');
+  });
+
+  it('sourceUrl null → 링크·브리지 미렌더(오도 방지), throw 0', () => {
+    expect(() =>
+      render(<PolicyResultCard item={item({ sourceUrl: null })} status="now" />),
+    ).not.toThrow();
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.queryByText(/‘신청하기’ 버튼을 찾으면 돼요/)).toBeNull();
+  });
+});
+
+describe('T-D1b 나와 맞는 점 체크리스트', () => {
+  const PROFILE: UserProfile = { age: 25, region: '부산', regionCode: '26', income: {} };
+
+  function axesItem(axes: AxisResult[], over: Partial<CachedPolicy> = {}): EvaluatedPolicy {
+    return { policy: policy(over) as Policy, reasons: [], recruitStatus: 'now', axes };
+  }
+
+  it('pass age축 → ✓ + "나이 …충족" 문구(자격 단정 아님)', () => {
+    const it0 = axesItem([{ axis: 'age', verdict: 'pass' }], { ageMin: 19, ageMax: 34 });
+    render(<PolicyResultCard item={it0} status="now" profile={PROFILE} />);
+    expect(screen.getByText(/나이 19~34세/)).toBeInTheDocument();
+    expect(screen.getByText(/내 나이 25세 충족\(추정\)/)).toBeInTheDocument();
+    // 자격 단정 금지.
+    expect(screen.queryByText(/자격이 (됩|안 됩)/)).toBeNull();
+  });
+
+  it('pass region축 → sidoNameByPrefix(26)=부산광역시 문구', () => {
+    const it0 = axesItem([{ axis: 'region', verdict: 'pass' }], {
+      isNationwide: false,
+      regionCodes: ['26'],
+      regionText: '부산 자유서식',
+    });
+    render(<PolicyResultCard item={it0} status="now" profile={PROFILE} />);
+    expect(screen.getByText(/부산광역시 거주/)).toBeInTheDocument();
+  });
+
+  it('review 축 → ? 마크 + "원문에서 확인", 자격 단정 부재', () => {
+    const it0: EvaluatedPolicy = {
+      policy: policy() as Policy,
+      reasons: ['INCOME_UNKNOWN'],
+      recruitStatus: 'now',
+      axes: [{ axis: 'income', verdict: 'review', reason: 'INCOME_UNKNOWN' }],
+    };
+    render(<PolicyResultCard item={it0} status="review" profile={PROFILE} />);
+    expect(screen.getByText(/소득 조건 — 원문에서 확인/)).toBeInTheDocument();
+    expect(screen.queryByText(/자격이 (됩|안 됩)/)).toBeNull();
+  });
+
+  it('blocked 축이 섞여 와도 blocked 라인 미렌더(pass/review만)', () => {
+    const it0: EvaluatedPolicy = {
+      policy: policy() as Policy,
+      reasons: [],
+      recruitStatus: 'now',
+      axes: [
+        { axis: 'age', verdict: 'pass' },
+        { axis: 'region', verdict: 'blocked', reason: 'REGION_MISMATCH' },
+      ],
+    };
+    render(<PolicyResultCard item={it0} status="now" profile={PROFILE} />);
+    expect(screen.queryByText(/막힘|부적격|탈락|거주.*불일치/)).toBeNull();
+  });
+
+  it('axes undefined(구 데이터) → 체크리스트 미렌더, throw 0', () => {
+    expect(() => render(<PolicyResultCard item={item()} status="now" profile={PROFILE} />)).not.toThrow();
+    expect(screen.queryByTestId('policy-checklist')).toBeNull();
+  });
+
+  it('profile 미입력 → 나이 문구는 "내 나이" 없이(throw 0)', () => {
+    const it0 = axesItem([{ axis: 'age', verdict: 'pass' }], { ageMin: 19, ageMax: 34 });
+    expect(() => render(<PolicyResultCard item={it0} status="now" />)).not.toThrow();
+    expect(screen.getByText(/나이 19~34세 충족\(추정\)/)).toBeInTheDocument();
+  });
+
+  it('체크리스트 추가해도 고지·링크 유지', () => {
+    const it0 = axesItem([{ axis: 'age', verdict: 'pass' }], { ageMin: 19, ageMax: 34 });
+    render(<PolicyResultCard item={it0} status="now" profile={PROFILE} />);
+    expect(screen.getAllByText(/추정/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.com/p1');
+  });
+});

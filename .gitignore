@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+*.local
+.DS_Store
+
+# 인제스트 산출(런타임 생성 — 커밋 금지)
+# 단 policies.json은 App 번들(인메모리 폴백)이 import하므로 예외 커밋(빌드 필수, ~870KB).
+data/cache/*
+!data/cache/policies.json
+data/parsed-sample.json
+coverage-report.json
+
+# secrets — API keys (절대 커밋 금지)
+.env
+.env.*
+!.env.example
