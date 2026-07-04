@@ -366,8 +366,8 @@ describe('ingest pipeline — 다중 클라이언트(온통 ∪ 서울)', () => 
     expect(result.droppedNoId).toBe(0);
   });
 
-  it('교차출처 동일 정책은 자동병합 안 함(수동후보로만 보고)', async () => {
-    // 온통에도 같은 "서울 청년수당"(다른 id·source)이 있을 때.
+  it('M-1: 교차출처 완전일치(정규화 제목) → 서울 억제, 정본(온통) 유지', async () => {
+    // 온통에도 제목이 완전히 같은 "2026 서울 청년수당"(다른 id·source)이 있을 때.
     const ontongDup = {
       id: '20260101005400213000',
       title: '2026 서울 청년수당',
@@ -381,15 +381,42 @@ describe('ingest pipeline — 다중 클라이언트(온통 ∪ 서울)', () => 
     const cache = memoryCache();
     const result = await ingest(deps({ client, cache, regionScope: 'all' }));
     const written = await cache.readAll();
-    // 둘 다 살아있음(자동병합 금지) — source+id 키가 달라 1차 dedup 미적용.
+    // 정본(온통) 유지, 서울 사본(V202600005) 억제.
     expect(written.find((p) => p.id === '20260101005400213000')).toBeDefined();
-    expect(written.find((p) => p.id === 'V202600005')).toBeDefined();
-    // 교차출처 유사쌍은 수동검증 후보로 보고됨.
-    const flagged = result.dedupeManualCandidates.some(
-      (c) =>
-        [c.kept, c.candidate].includes('V202600005') &&
-        [c.kept, c.candidate].includes('20260101005400213000'),
-    );
-    expect(flagged).toBe(true);
+    expect(written.find((p) => p.id === 'V202600005')).toBeUndefined();
+    expect(result.suppressedCrossSource).toBe(1);
+    // 억제되지 않은 서울 순증(마음건강)은 유지.
+    expect(written.find((p) => p.id === 'V202500013')).toBeDefined();
+  });
+
+  it('M-1: 연도 변형은 억제하지 않음(신선도 보존) — "2026 X"(서울) vs "서울 청년수당"(온통) 둘 다 유지', async () => {
+    // 온통은 연도 없는 구판, 서울은 연도 붙은 최신판 → 정규화 제목 불일치 → 억제 안 함.
+    const ontongOld = {
+      id: '20250519005400210850',
+      title: '서울 청년수당',
+      regionText: '서울특별시',
+      source: 'ontong',
+    };
+    const client: IngestClient = {
+      fetchAll: vi.fn().mockResolvedValue([ontongOld, ...seoulRaw]),
+    };
+    const cache = memoryCache();
+    const result = await ingest(deps({ client, cache, regionScope: 'all' }));
+    const written = await cache.readAll();
+    expect(written.find((p) => p.id === '20250519005400210850')).toBeDefined();
+    expect(written.find((p) => p.id === 'V202600005')).toBeDefined(); // 최신판 보존
+    expect(result.suppressedCrossSource).toBe(0);
+  });
+
+  it('M-1: 정본이 없으면(순수 순증) 서울 전량 유지, 억제 0', async () => {
+    const client: IngestClient = {
+      fetchAll: vi.fn().mockResolvedValue([...page1, ...page2, ...seoulRaw]),
+    };
+    const cache = memoryCache();
+    const result = await ingest(deps({ client, cache, regionScope: 'all' }));
+    const written = await cache.readAll();
+    // 온통 fixture에 "서울 청년수당"·"마음건강" 동명 없음 → 억제 0, 서울 2건 유지.
+    expect(result.suppressedCrossSource).toBe(0);
+    expect(written.filter((p) => p.source === 'seoul-youth')).toHaveLength(2);
   });
 });

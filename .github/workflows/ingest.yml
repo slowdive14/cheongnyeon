@@ -41,8 +41,9 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           INGEST_CONCURRENCY: '12'
           # 서울 청년몽땅 합류(Phase B) — 기본 OFF. 프로덕션 활성화(값 'on') 게이트:
-          #   (1) 교차출처 중복/상충 카드 억제 규칙(safety M-1), (2) 청년몽땅 이용약관·공공누리 확인(운영자).
-          #   두 게이트 충족 전까지 켜지 말 것. 근거: _workspace/40_safety_seoul.md, 40_B0_recon.md §4.
+          #   (1) ✅ 교차출처 중복/상충 카드 억제(M-1) — 완료(suppressCrossSourceDuplicates).
+          #   (2) ⬜ 청년몽땅 이용약관·공공누리 라이선스 확인(운영자) — 남은 유일 게이트.
+          #   (2) 충족 후 아래 줄 주석 해제. 근거: _workspace/40_B0_recon.md §4, 40_safety_seoul.md.
           # SEOUL_INGEST: 'on'
         run: |
           set -o pipefail

@@ -165,6 +165,7 @@ async function main(): Promise<void> {
     `[ingest:${mode}] policies=${result.policies.length} ` +
       `droppedNoId=${result.droppedNoId} droppedUnknownRegion=${result.droppedUnknownRegion} ` +
       `droppedNonSeoul=${result.droppedNonSeoul} merged=${result.mergedDuplicates} ` +
+      `suppressedCrossSource=${result.suppressedCrossSource} ` +
       `reparsed=${result.reparsed} manualCandidates=${result.dedupeManualCandidates.length}`,
   );
   console.log(

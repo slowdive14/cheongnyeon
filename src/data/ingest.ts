@@ -3,7 +3,7 @@ import { normalizePolicy } from '../domain/normalizePolicy';
 import type { CachedPolicy, PolicyCache } from './cache/types';
 import type { ParseResult } from './parseChunk';
 import { contentHash, needsReparse } from './incremental';
-import { SIMILARITY_THRESHOLD, pairSimilarity } from './similarity';
+import { SIMILARITY_THRESHOLD, pairSimilarity, normalizeName } from './similarity';
 import { buildText, buildKeywords } from '../retrieval/embed';
 
 /**
@@ -90,6 +90,8 @@ export interface IngestResult {
   mergedDuplicates: number;
   /** 2차 키 유사(자동병합 금지) 수동검증 후보. */
   dedupeManualCandidates: DedupeManualCandidate[];
+  /** 교차출처 중복으로 억제된 서울(seoul-youth) 정책 수(M-1). */
+  suppressedCrossSource: number;
   /** 증분으로 재파싱한 정책 수. */
   reparsed: number;
 }
@@ -150,14 +152,19 @@ export async function ingest(deps: IngestDeps): Promise<IngestResult> {
     }
   }
 
-  // 5) 2차 키(정규화명+기관 유사도≥0.85) — 자동병합 금지, 수동검증 후보만 수집.
-  const dedupeManualCandidates = collectManualCandidates(seoul);
+  // 5) 교차출처 중복 억제(M-1): 서울(seoul-youth)이 정본(온통 등, 서울/전국) 정책과
+  //    정규화 제목 완전 일치 시 서울 쪽 억제(정본 유지 — 구조화 자격 풍부). 연도 변형은 유지(신선도 보존).
+  const { kept: afterSuppress, suppressedCrossSource } = suppressCrossSourceDuplicates(seoul);
+
+  // 5b) 2차 키(정규화명+기관 유사도≥0.85) — 자동병합 금지, 수동검증 후보만 수집.
+  //     억제 후 집합에서 수집(억제된 완전일치 쌍은 제외 → 운영자에게 남은 near-dup만 보고).
+  const dedupeManualCandidates = collectManualCandidates(afterSuppress);
 
   // 6) 증분 판정 → 변경분 parseChunk·설명 동시 처리 + 임베딩 배치(순차 지연 병목 제거).
   const prevSnapshot = await cache.readAll();
   const prevById = new Map(prevSnapshot.map((p) => [p.id, p]));
 
-  const items: WorkItem[] = seoul.map((p) => {
+  const items: WorkItem[] = afterSuppress.map((p) => {
     const cached = prevById.get(p.id) ?? null;
     return {
       policy: p,
@@ -237,6 +244,7 @@ export async function ingest(deps: IngestDeps): Promise<IngestResult> {
     droppedNonSeoul,
     mergedDuplicates,
     dedupeManualCandidates,
+    suppressedCrossSource,
     reparsed,
   };
 }
@@ -306,6 +314,48 @@ function lastModifiedOf(p: Policy): string | null {
   if (raw === null || typeof raw !== 'object') return null;
   const lm = (raw as Record<string, unknown>).lastModified;
   return typeof lm === 'string' && lm.trim().length > 0 ? lm.trim() : null;
+}
+
+/**
+ * 교차출처 중복 억제(M-1) — 서울(seoul-youth) 정책이 정본(비 seoul-youth, 서울/전국) 정책과
+ * 정규화 제목이 완전 일치하면 서울 쪽을 억제하고 정본을 유지한다.
+ *
+ * 설계 근거:
+ *  - 같은 정책이 두 출처로 두 카드(자격 신호 상충: 한쪽 blocked·한쪽 review)로 뜨는 것을 막는다(취약 사용자 혼란 차단).
+ *  - 정본(온통) 유지: 구조화 자격 필드(소득코드·지역코드)가 풍부해 과잉 '확인 필요'·상충이 적다.
+ *  - 정본에 없는 순증 서울 정책은 영향 없음(제목 무매칭 → 유지).
+ *  - **연도 변형은 억제하지 않는다**(제목에 연도 유지 → "2026 X" ≠ "X"): 신선한 최신판을 보존하고,
+ *    마감된 구판은 모집상태로 자연 필터되게 한다(신선도 손실 방지).
+ *  - 정밀도 우선(오억제 = 순증 소실): 정규화 제목 '완전 일치'만 자동 억제(퍼지 유사≥0.85는
+ *    dedupeManualCandidates로 보고만). 정본이 서울/전국일 때만(동명 타지역 정책 오매칭 차단).
+ */
+function suppressCrossSourceDuplicates(policies: Policy[]): {
+  kept: Policy[];
+  suppressedCrossSource: number;
+} {
+  // 정본(비 seoul-youth, 서울/전국) 제목 인덱스.
+  const canonTitles = new Set<string>();
+  for (const p of policies) {
+    if (p.source === 'seoul-youth') continue;
+    if (!(p.regionCodes.includes('11') || p.isNationwide)) continue;
+    const key = normalizeName(p.title);
+    if (key.length > 0) canonTitles.add(key);
+  }
+  if (canonTitles.size === 0) return { kept: policies, suppressedCrossSource: 0 };
+
+  const kept: Policy[] = [];
+  let suppressedCrossSource = 0;
+  for (const p of policies) {
+    if (p.source === 'seoul-youth') {
+      const key = normalizeName(p.title);
+      if (key.length > 0 && canonTitles.has(key)) {
+        suppressedCrossSource += 1;
+        continue; // 정본이 이미 있음 → 서울 사본 억제.
+      }
+    }
+    kept.push(p);
+  }
+  return { kept, suppressedCrossSource };
 }
 
 /**
