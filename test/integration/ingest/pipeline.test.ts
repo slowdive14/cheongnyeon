@@ -323,3 +323,73 @@ describe('ingest pipeline', () => {
     expect(written.find((p) => p.id === 'ON-9202')).toBeDefined();
   });
 });
+
+/**
+ * Phase B — 다중 클라이언트 합류(온통 ∪ 서울). QA Should 상설 가드.
+ * 서울(source='seoul-youth', V-접두 id)이 온통과 키 충돌 없이 편입되고,
+ * 교차출처 동일 정책은 자동병합 없이 수동검증 후보로만 보고되는지 확인.
+ */
+describe('ingest pipeline — 다중 클라이언트(온통 ∪ 서울)', () => {
+  const seoulRaw = [
+    {
+      id: 'V202600005',
+      title: '2026 서울 청년수당',
+      regionText: '서울특별시',
+      ageText: '만19세~34세',
+      source: 'seoul-youth',
+      orgName: '서울특별시 청년사업담당관',
+      sourceUrl: 'https://youth.seoul.go.kr/infoData/plcyInfo/view.do?plcyBizId=V202600005',
+    },
+    {
+      id: 'V202500013',
+      title: '2025 서울 청년 마음건강 지원사업',
+      regionText: '서울특별시',
+      category: '마음건강',
+      source: 'seoul-youth',
+      sourceUrl: 'https://youth.seoul.go.kr/infoData/plcyInfo/view.do?plcyBizId=V202500013',
+    },
+  ];
+
+  it('서울 정책 편입(source=seoul-youth, 서울 게이트 통과) + 온통 유실 없음', async () => {
+    const client: IngestClient = {
+      fetchAll: vi.fn().mockResolvedValue([...page1, ...page2, ...seoulRaw]),
+    };
+    const cache = memoryCache();
+    const result = await ingest(deps({ client, cache }));
+    const written = await cache.readAll();
+    // 서울 2건 편입(regionText '서울특별시' → 코드 11 → 서울 게이트 pass).
+    const seoul = written.filter((p) => p.source === 'seoul-youth');
+    expect(seoul.map((p) => p.id).sort()).toEqual(['V202500013', 'V202600005']);
+    expect(seoul.every((p) => p.regionCodes.includes('11'))).toBe(true);
+    // 온통 서울/전국 정책 유실 없음(부산 ON-0003만 서울필터 탈락 — 서울 합류와 무관).
+    expect(written.some((p) => p.source === 'ontong')).toBe(true);
+    expect(result.droppedNoId).toBe(0);
+  });
+
+  it('교차출처 동일 정책은 자동병합 안 함(수동후보로만 보고)', async () => {
+    // 온통에도 같은 "서울 청년수당"(다른 id·source)이 있을 때.
+    const ontongDup = {
+      id: '20260101005400213000',
+      title: '2026 서울 청년수당',
+      regionText: '서울특별시',
+      orgName: '서울특별시 청년사업담당관',
+      source: 'ontong',
+    };
+    const client: IngestClient = {
+      fetchAll: vi.fn().mockResolvedValue([ontongDup, ...seoulRaw]),
+    };
+    const cache = memoryCache();
+    const result = await ingest(deps({ client, cache, regionScope: 'all' }));
+    const written = await cache.readAll();
+    // 둘 다 살아있음(자동병합 금지) — source+id 키가 달라 1차 dedup 미적용.
+    expect(written.find((p) => p.id === '20260101005400213000')).toBeDefined();
+    expect(written.find((p) => p.id === 'V202600005')).toBeDefined();
+    // 교차출처 유사쌍은 수동검증 후보로 보고됨.
+    const flagged = result.dedupeManualCandidates.some(
+      (c) =>
+        [c.kept, c.candidate].includes('V202600005') &&
+        [c.kept, c.candidate].includes('20260101005400213000'),
+    );
+    expect(flagged).toBe(true);
+  });
+});

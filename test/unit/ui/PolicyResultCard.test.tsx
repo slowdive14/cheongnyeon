@@ -178,6 +178,23 @@ describe('T-F1 절벽 완화 카피(신청 페이지 열기 + 브리지)', () =>
     expect(link).toHaveAttribute('rel', 'noreferrer noopener');
   });
 
+  it('H-1: source=seoul-youth → "(청년몽땅)" 라벨(거짓 출처 표기 금지)', () => {
+    render(
+      <PolicyResultCard
+        item={item({ source: 'seoul-youth', sourceUrl: 'https://youth.seoul.go.kr/p' })}
+        status="now"
+      />,
+    );
+    expect(screen.getByText('신청 페이지 열기 (청년몽땅)')).toBeInTheDocument();
+    expect(screen.queryByText(/온통청년/)).toBeNull();
+  });
+
+  it('H-1: source 불명 → 괄호 출처 생략(틀린 출처 안 만듦)', () => {
+    render(<PolicyResultCard item={item({ source: 'unknown' })} status="now" />);
+    expect(screen.getByText('신청 페이지 열기')).toBeInTheDocument();
+    expect(screen.queryByText(/\(온통청년\)|\(청년몽땅\)/)).toBeNull();
+  });
+
   it('sourceUrl null → 링크·브리지 미렌더(오도 방지), throw 0', () => {
     expect(() =>
       render(<PolicyResultCard item={item({ sourceUrl: null })} status="now" />),

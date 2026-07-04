@@ -1,0 +1,27 @@
+[
+  {
+    "id": "V202600005",
+    "title": "2026 서울 청년수당",
+    "summary": "서울 거주 만 19~34세 미취업·단기근로 청년에게 활동지원금(월 50만원 최대 6개월)과 성장 프로그램을 제공",
+    "ageText": "만19세~34세",
+    "incomeText": "중위소득 150% 이하",
+    "regionText": "서울특별시",
+    "recruitStartText": "2026-05-27",
+    "recruitEndText": "2026-05-29",
+    "category": "복지.문화",
+    "sourceUrl": "https://youth.seoul.go.kr/infoData/plcyInfo/view.do?plcyBizId=V202600005",
+    "orgName": "서울특별시 청년사업담당관",
+    "source": "seoul-youth"
+  },
+  {
+    "id": "V202500013",
+    "title": "2025 서울 청년 마음건강 지원사업",
+    "summary": "만 19~39세 서울 청년에게 전문 심리상담(최대 10회)과 마음건강 자가검진을 지원",
+    "ageText": "만19세~39세",
+    "regionText": "서울특별시",
+    "category": "마음건강",
+    "sourceUrl": "https://youth.seoul.go.kr/infoData/plcyInfo/view.do?plcyBizId=V202500013",
+    "orgName": "서울특별시 청년사업담당관",
+    "source": "seoul-youth"
+  }
+]

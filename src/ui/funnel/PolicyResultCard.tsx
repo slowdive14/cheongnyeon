@@ -86,6 +86,21 @@ const STATUS_META: Record<'now' | 'soon' | 'review', { label: string; cls: strin
   review: { label: '몇 가지만 확인하면 돼요', cls: 'bg-warmgray-50 text-warmgray-800 ring-warmgray-800/20' },
 };
 
+/**
+ * 원문 버튼 출처 라벨 — 정책 출처를 정확히 표기(H-1: 거짓 출처 표기 금지).
+ * source를 아는 것만 라벨을 붙이고, 불명(unknown 등)은 괄호를 생략해 틀린 출처를 만들지 않는다.
+ */
+function originLabel(source: unknown): string {
+  switch (source) {
+    case 'ontong':
+      return '온통청년';
+    case 'seoul-youth':
+      return '청년몽땅';
+    default:
+      return '';
+  }
+}
+
 /** CachedPolicy.updatedAt만 신선도 보유 — 옵셔널·null-safe로 포맷. */
 function formatUpdatedAt(policy: EvaluatedPolicy['policy']): string | null {
   const raw = (policy as Partial<CachedPolicy>).updatedAt;
@@ -101,6 +116,7 @@ export function PolicyResultCard({ item, status, profile }: PolicyResultCardProp
     typeof policy?.title === 'string' && policy.title.length > 0 ? policy.title : '제목 미상 정책';
   const sourceUrl =
     typeof policy?.sourceUrl === 'string' && policy.sourceUrl.length > 0 ? policy.sourceUrl : null;
+  const origin = originLabel(policy?.source);
   const updatedAt = formatUpdatedAt(policy);
 
   // 나와 맞는 점 체크리스트(D-①). axes 미보유(구 데이터) → 빈 배열 → 미렌더.
@@ -174,7 +190,7 @@ export function PolicyResultCard({ item, status, profile }: PolicyResultCardProp
             className="flex items-center gap-1 font-medium text-clay-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
           >
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-            신청 페이지 열기 (온통청년)
+            신청 페이지 열기{origin ? ` (${origin})` : ''}
           </a>
         ) : null}
       </div>

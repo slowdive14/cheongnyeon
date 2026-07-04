@@ -40,6 +40,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           INGEST_CONCURRENCY: '12'
+          # 서울 청년몽땅 합류(Phase B) — 기본 OFF. 프로덕션 활성화(값 'on') 게이트:
+          #   (1) 교차출처 중복/상충 카드 억제 규칙(safety M-1), (2) 청년몽땅 이용약관·공공누리 확인(운영자).
+          #   두 게이트 충족 전까지 켜지 말 것. 근거: _workspace/40_safety_seoul.md, 40_B0_recon.md §4.
+          # SEOUL_INGEST: 'on'
         run: |
           set -o pipefail
           npm run ingest 2>&1 | tee ingest.log

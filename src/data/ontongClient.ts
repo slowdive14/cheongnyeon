@@ -1,6 +1,7 @@
 import page1 from './__fixtures__/ontong-policies.page1.sample.json';
 import page2 from './__fixtures__/ontong-policies.page2.sample.json';
 import { sidoNameByPrefix } from '../domain/parse/sido';
+import { isMentalHealthTitle } from '../domain/parse/mentalHealth';
 
 /**
  * 온통청년 클라이언트. 받기(fetch) 격리 계층.
@@ -104,16 +105,6 @@ function ymd8ToIso(s: unknown): string | null {
   return `${m[1]}-${m[2]}-${m[3]}`;
 }
 
-/**
- * 마음건강 영역 식별(하드필터 category='마음건강').
- *  - 정밀도 우선: 온통 범용 키워드("맞춤형상담서비스")가 무관 정책(창업·축제 등)에 광범위
- *    부착돼 있어 단순 '상담' 매칭은 과탐. 두 갈래로 한정한다.
- *  - (A) 강한 복합어: 마음건강/정신건강/심리상담 등은 분류 무관 단독으로 마음건강.
- *  - (B) 공식 중분류 '건강' + 마음건강 용어(심리/정신/마음/정서/우울/불안/자살/고립/은둔).
- */
-const MH_STRONG = /마음\s*건강|정신\s*건강|심리\s*(상담|지원|치료|검사|정서)|자살\s*예방|은둔\s*형?\s*청년|고립\s*청년/;
-const MH_TERM = /심리|정신|마음|정서|우울|불안|스트레스|자살|고립|은둔/;
-
 function str(v: unknown): string {
   return typeof v === 'string' ? v : '';
 }
@@ -204,7 +195,7 @@ export function adaptOntongItem(raw: unknown): Record<string, unknown> {
   // 카테고리: 마음건강이면 하드필터 대상으로, 아니면 대분류(lclsfNm).
   const title = str(o.plcyNm);
   const mclsf = str(o.mclsfNm);
-  const isMentalHealth = MH_STRONG.test(title) || (mclsf.includes('건강') && MH_TERM.test(title));
+  const isMentalHealth = isMentalHealthTitle(title, mclsf);
   const category = isMentalHealth ? '마음건강' : str(o.lclsfNm).trim() || undefined;
 
   // 원문: 온통청년 정책 상세(plcyNo)를 정본으로 — 모든 정책에 정확. plcyNo 없으면 원본 URL 폴백(딥링크 우선).

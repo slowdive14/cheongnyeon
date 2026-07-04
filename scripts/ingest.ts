@@ -23,6 +23,7 @@ try {
 }
 
 import { createOntongClient } from '../src/data/ontongClient';
+import { createSeoulClient } from '../src/data/seoulClient';
 import { createGeminiClient, createDisabledLlmClient } from '../src/data/llm/geminiClient';
 import { createGeminiEmbeddingProvider } from '../src/data/llm/geminiEmbed';
 import { parseChunk } from '../src/data/parseChunk';
@@ -71,7 +72,24 @@ async function main(): Promise<void> {
   const ontong = createOntongClient({ apiKey: ontongKey });
   const llm = createGeminiClient({ apiKey: geminiKey });
 
-  const client: IngestClient = { fetchAll: () => ontong.fetchAll() };
+  // 서울 청년몽땅 합류(B) — SEOUL_INGEST=on일 때만 실 크롤(기본 off = 무영향).
+  //  숫자-ID(온통 유입)는 클라이언트가 원천 제외, V-접두(서울 자체)만 수집.
+  const seoulLive = process.env.SEOUL_INGEST === 'on';
+  const seoul = createSeoulClient({ live: seoulLive });
+  // 다중 클라이언트 합류. 서울 수집 실패가 온통청년 적재를 절단·삭제하지 않게 격리한다(부분실패 격리).
+  const client: IngestClient = {
+    async fetchAll() {
+      const ontongItems = await ontong.fetchAll();
+      let seoulItems: unknown[] = [];
+      try {
+        seoulItems = await seoul.fetchAll();
+      } catch (e) {
+        console.warn('[seoul] fetch 실패 — 서울분 건너뜀(온통청년 적재 보존):', e);
+      }
+      console.log(`[fetch] ontong=${ontongItems.length} seoul=${seoulItems.length} (live=${seoulLive})`);
+      return [...ontongItems, ...seoulItems];
+    },
+  };
   // parseChunk: 기본 LLM. INGEST_PARSE=off면 청크 LLM 생략(임베딩은 title+summary 폴백, 비용·시간 절감).
   const parseLlm = process.env.INGEST_PARSE === 'off' ? createDisabledLlmClient() : llm;
   const parser: IngestParser = {
