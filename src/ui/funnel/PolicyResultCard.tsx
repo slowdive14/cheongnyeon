@@ -117,6 +117,9 @@ export function PolicyResultCard({ item, status, profile }: PolicyResultCardProp
   const sourceUrl =
     typeof policy?.sourceUrl === 'string' && policy.sourceUrl.length > 0 ? policy.sourceUrl : null;
   const origin = originLabel(policy?.source);
+  // 혜택 한 줄(D-②): 그라운딩 통과한 precompute 설명만 표시(없으면 raw 요약으로 폴백).
+  const benefitRaw = (policy as Partial<CachedPolicy>).explanation;
+  const benefit = typeof benefitRaw === 'string' && benefitRaw.trim().length > 0 ? benefitRaw.trim() : null;
   const updatedAt = formatUpdatedAt(policy);
 
   // 나와 맞는 점 체크리스트(D-①). axes 미보유(구 데이터) → 빈 배열 → 미렌더.
@@ -158,7 +161,13 @@ export function PolicyResultCard({ item, status, profile }: PolicyResultCardProp
         </p>
       ) : null}
 
-      {policy?.summary ? <p className="mt-1.5 text-sm text-sand-600">{policy.summary}</p> : null}
+      {benefit ? (
+        <p data-testid="policy-benefit" className="mt-1.5 text-sm text-ink-800">
+          {benefit}
+        </p>
+      ) : policy?.summary ? (
+        <p className="mt-1.5 text-sm text-sand-600">{policy.summary}</p>
+      ) : null}
 
       {checklist.length > 0 ? (
         <ul data-testid="policy-checklist" className="mt-2.5 space-y-1">

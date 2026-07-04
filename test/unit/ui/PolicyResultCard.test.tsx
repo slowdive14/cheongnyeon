@@ -83,6 +83,24 @@ describe('PolicyResultCard', () => {
     expect(screen.getByText(/추정/)).toBeInTheDocument();
   });
 
+  it('D-②: explanation(혜택 한 줄) 있으면 표시', () => {
+    render(
+      <PolicyResultCard
+        item={item({ explanation: '월세 일부를 지원하는 정책이에요.', summary: '원문 요약(길고 딱딱함)' })}
+        status="now"
+      />,
+    );
+    expect(screen.getByTestId('policy-benefit')).toHaveTextContent('월세 일부를 지원하는 정책이에요.');
+    // 혜택 한 줄이 있으면 raw 요약은 대신 노출하지 않음(잡음 방지).
+    expect(screen.queryByText('원문 요약(길고 딱딱함)')).toBeNull();
+  });
+
+  it('D-②: explanation 없으면 raw 요약으로 폴백', () => {
+    render(<PolicyResultCard item={item({ explanation: null, summary: '심리상담 비용을 지원합니다.' })} status="now" />);
+    expect(screen.queryByTestId('policy-benefit')).toBeNull();
+    expect(screen.getByText('심리상담 비용을 지원합니다.')).toBeInTheDocument();
+  });
+
   it('sourceUrl 있으면 원문 링크', () => {
     render(<PolicyResultCard item={item()} status="now" />);
     const link = screen.getByRole('link');
@@ -145,15 +163,15 @@ describe('PolicyResultCard', () => {
     expect(screen.queryByTestId('policy-explanation')).toBeNull();
   });
 
-  it('T-D1c: stored explanation 있어도 policy-explanation 미표시(표시 제거)', () => {
+  it('D-②: stored explanation은 (구)prose(policy-explanation) 아닌 혜택 한 줄(policy-benefit)로 표시', () => {
     const stored: EvaluatedPolicy = {
       policy: policy({ explanation: '미리 만든 설명입니다.' }) as Policy,
       reasons: [],
       recruitStatus: 'now',
     };
     render(<PolicyResultCard item={stored} status="now" />);
-    expect(screen.queryByTestId('policy-explanation')).toBeNull();
-    expect(screen.queryByText('미리 만든 설명입니다.')).toBeNull();
+    expect(screen.queryByTestId('policy-explanation')).toBeNull(); // 구 "왜 맞을까요" prose 컨테이너 없음
+    expect(screen.getByTestId('policy-benefit')).toHaveTextContent('미리 만든 설명입니다.');
   });
 
   it('T-D1c: llm 있어도 "왜 맞을까요/왜 맞는지" prose 미표시(호출 정지)', () => {

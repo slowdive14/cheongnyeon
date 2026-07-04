@@ -112,7 +112,8 @@ async function main(): Promise<void> {
             },
             { llm },
           );
-          return r.text;
+          // 그라운딩 통과한 LLM 혜택 문장만 저장. fallback(일반 필러)은 null → 카드에 미노출.
+          return r.source === 'llm' ? r.text : null;
         },
       }
     : undefined;
@@ -133,11 +134,14 @@ async function main(): Promise<void> {
   // 스코프 확장 P2: 전국 적재('all') + 설명·임베딩 precompute. (서울만 원하면 ONTONG_REGION=seoul)
   const regionScope = process.env.ONTONG_REGION === 'seoul' ? 'seoul' : 'all';
   const concurrency = Number(process.env.INGEST_CONCURRENCY) || 12;
+  // D-② 혜택 한 줄 재생성: INGEST_FORCE_EXPLAIN=on이면 변경 없어도 설명을 다시 생성(목적 변경 1회성).
+  const forceExplain = process.env.INGEST_FORCE_EXPLAIN === 'on';
   console.log(
     `[cache:${useSupabase ? 'supabase' : 'localjson'}] [embed:${embedder ? '1536' : 'off'}] ` +
-      `[parse:${process.env.INGEST_PARSE === 'off' ? 'off' : 'llm'}] [region:${regionScope}] [conc:${concurrency}]`,
+      `[parse:${process.env.INGEST_PARSE === 'off' ? 'off' : 'llm'}] [region:${regionScope}] ` +
+      `[conc:${concurrency}] [forceExplain:${forceExplain}]`,
   );
-  const result = await ingest({ client, parser, cache, now, regionScope, explainer, embedder, concurrency });
+  const result = await ingest({ client, parser, cache, now, regionScope, explainer, embedder, concurrency, forceExplain });
 
   // 커버리지: 적재된 온통(서울) 정책 vs 몽땅 fixture(어댑터 정규화).
   const ontongPolicies: Policy[] = result.policies;

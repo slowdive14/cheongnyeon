@@ -247,6 +247,26 @@ describe('ingest pipeline', () => {
     expect(explain).toHaveBeenCalled();
   });
 
+  it('D-②: forceExplain=true → 변경 없어도 굳은 설명 재생성(백필 버그 해소)', async () => {
+    // 이전 스냅샷: 내용 동일(재파싱 불필요) + 이미 (구)설명 보유.
+    const explain = vi.fn(async () => '월세 일부를 지원하는 정책이에요.');
+    const cache0 = memoryCache();
+    await ingest(deps({ cache: cache0, explainer: { explain: vi.fn(async () => '옛 설명(폴백)') } }));
+    const seeded = await cache0.readAll();
+    const cache = memoryCache(seeded);
+    explain.mockClear();
+
+    // forceExplain 없이: 설명 유지(재생성 안 함).
+    await ingest(deps({ cache: memoryCache(seeded), explainer: { explain } }));
+    expect(explain).not.toHaveBeenCalled();
+
+    // forceExplain=true: 내용 변경 없어도 전부 재생성.
+    await ingest(deps({ cache, explainer: { explain }, forceExplain: true }));
+    const written = await cache.readAll();
+    expect(explain).toHaveBeenCalled();
+    expect(written.every((p) => p.explanation === '월세 일부를 지원하는 정책이에요.')).toBe(true);
+  });
+
   it('embedder(배치) → 변경분 임베딩 1회 배치 호출 + vector 저장 (C1/최적화)', async () => {
     const embed = vi.fn(async (texts: string[]) => texts.map(() => [0.1, 0.2, 0.3]));
     const cache = memoryCache();

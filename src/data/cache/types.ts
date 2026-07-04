@@ -17,8 +17,8 @@ export interface CachedPolicy extends Policy {
   /** parseChunk 산출(구조화 자격·청크). 미파싱은 null. */
   parsed: import('../parseChunk').ParseResult | null;
   /**
-   * '왜 맞는지' precompute 설명(인제스트 시 운영자 키로 1회 생성, 질의 무관 → 정책별 고정).
-   * 런타임 LLM·사용자 키 없이 카드에 표시. 미생성은 null/미지정.
+   * '혜택 한 줄'(D-②) precompute 설명 — 인제스트 시 운영자 키로 생성, 질의 무관 → 정책별 고정.
+   * 그라운딩 통과한 LLM 문장만 저장(fallback/미생성은 null → 카드 미노출). 런타임 LLM·사용자 키 없이 표시.
    */
   explanation?: string | null;
   /** 키워드 검색용 토큰(제목·카테고리). 미지정은 빈 배열 취급. */

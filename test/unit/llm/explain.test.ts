@@ -56,6 +56,13 @@ describe('explain — EX 그라운딩 가드', () => {
     expect(r.text).toBeTruthy();
   });
 
+  it('D-② 혜택 서술형("~을 지원해요")은 자격단정 아님 → 통과(grounded)', async () => {
+    const { llm } = llmReturning('심리상담 비용을 지원하는 정책이에요.');
+    const r = await explainMatch(RECORD, { llm });
+    expect(r.source).toBe('llm');
+    expect(r.grounded).toBe(true);
+  });
+
   it('EX-2 입력외 URL 반환 → 거부·fallback', async () => {
     const { llm } = llmReturning('자세한 내용은 https://evil.example.com 에서 보세요.');
     const r = await explainMatch(RECORD, { llm });

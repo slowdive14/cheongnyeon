@@ -51,6 +51,12 @@ export interface IngestDeps {
   embedder?: IngestEmbedder;
   /** parseChunk·설명 동시 처리 수(병렬 풀). 기본 DEFAULT_CONCURRENCY. */
   concurrency?: number;
+  /**
+   * 설명(혜택 한 줄) 강제 재생성(D-②). true면 내용 변경이 없어도 explainer로 explanation을 다시 만든다.
+   * 프롬프트 목적 변경 시 굳어버린 이전 설명(폴백 포함)을 갱신하는 1회성 스위치(백필 버그 해소).
+   * parseChunk·임베딩은 재실행하지 않는다(설명만 재생성 → 비용 최소).
+   */
+  forceExplain?: boolean;
 }
 
 /** 인제스트 작업 항목(정책별 precompute 상태). */
@@ -187,11 +193,11 @@ export async function ingest(deps: IngestDeps): Promise<IngestResult> {
       it.explanation = deps.explainer ? await safeExplain(deps.explainer, it.policy) : null;
       it.updatedAt = now;
     } else {
-      // 변경 없음: 이전 파싱·설명·updatedAt 보존. (explainer 새로 생겼는데 결손이면 보강.)
+      // 변경 없음: 이전 파싱·updatedAt 보존. 설명은 결손 보강 또는 forceExplain(D-② 목적변경 재생성)일 때 재생성.
       it.parsed = it.cached?.parsed ?? null;
       const prevExpl = it.cached?.explanation ?? null;
-      it.explanation =
-        prevExpl === null && deps.explainer ? await safeExplain(deps.explainer, it.policy) : prevExpl;
+      const regenExplain = deps.explainer != null && (prevExpl === null || deps.forceExplain === true);
+      it.explanation = regenExplain ? await safeExplain(deps.explainer!, it.policy) : prevExpl;
       it.updatedAt = it.cached?.updatedAt ?? now;
     }
   });
