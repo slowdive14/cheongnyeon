@@ -11,7 +11,12 @@ name: ingest-policies
 on:
   schedule:
     - cron: '0 19 * * 0,3' # 일·수 19:00 UTC = 월·목 04:00 KST
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_explain:
+        description: '혜택 한 줄(D-②) 전체 재생성 — 프롬프트 목적 변경 시 1회성(~$1). 평소 false.'
+        type: boolean
+        default: false
 
 # 동시 실행 방지(중복 적재 금지). 진행 중이면 새 실행은 대기·중복 취소 없이 직렬화.
 concurrency:
@@ -47,6 +52,8 @@ jobs:
           #      대비 라이선스 승인 미취득. 운영자가 리스크 인지·수용하고 사전 활성화(승인 요청은 후속).
           #      승인 불발·거부 시 이 줄을 다시 주석 처리하고 서울 데이터 purge 필요. 근거: _workspace/40_B0_recon.md §4.
           SEOUL_INGEST: 'on'
+          # 혜택 한 줄(D-②) 전체 재생성 — 수동 실행에서 force_explain=true일 때만 'on'. 정기(cron)은 항상 off.
+          INGEST_FORCE_EXPLAIN: ${{ inputs.force_explain && 'on' || '' }}
         run: |
           set -o pipefail
           npm run ingest 2>&1 | tee ingest.log
