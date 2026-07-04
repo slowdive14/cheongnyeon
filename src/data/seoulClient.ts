@@ -136,11 +136,17 @@ export function parseSeoulListItems(html: string): { key: string; title: string 
 }
 
 /**
- * 청년몽땅 자체 편집 정책 키인가(수집 대상). `V` 접두 = 서울 자체.
- * 20자리 숫자 키는 온통청년 유입(우리 DB `id`와 동일) → 원천 제외(중복 0).
+ * 청년몽땅 자체 정책 키인가(수집 대상).
+ *  - 순수 숫자(20자리) = 온통청년 유입(우리 DB `id`와 동일) → **제외**(중복).
+ *  - 문자 접두(`V`=자체 편집, `R`=서울 원천 등록 정책, 그 외 문자 접두) = 서울 자체 → **수집**.
+ *
+ * (정정 2026-07-04: 초기엔 V-접두만 수집해 R-접두 서울 원천 정책 294건을 통째로 놓쳤다.
+ *  숫자키만 제외하는 방식으로 교정 — 서울시+자치구 순증 ≈280건 확보.)
  */
 export function isSeoulNativeKey(key: string): boolean {
-  return typeof key === 'string' && /^V/i.test(key.trim());
+  if (typeof key !== 'string') return false;
+  const k = key.trim();
+  return k.length > 0 && !/^\d+$/.test(k);
 }
 
 /**

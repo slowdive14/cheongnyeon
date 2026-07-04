@@ -20,6 +20,7 @@ const LIST_HTML = `
   <li><a href="#none" class="tit txt-over1" onclick="goView('20260614005400213232');">청년 부동산 중개보수 및 이사비 지원사업</a></li>
   <li><a href="#none" class="tit txt-over1" onclick="goView('V202600005');">2026 서울 청년수당</a></li>
   <li><a href="#none" class="tit txt-over1" onclick="goView('V202500013');">2025 서울 청년 마음건강 지원사업</a></li>
+  <li><a href="#none" class="tit txt-over1" onclick="goView('R2024112528145');">후불 기후동행카드</a></li>
 </ul>`;
 
 const DETAIL_HTML = `
@@ -37,9 +38,10 @@ const DETAIL_HTML = `
 describe('parseSeoulListItems', () => {
   it('goView onclick에서 key·title을 추출', () => {
     const items = parseSeoulListItems(LIST_HTML);
-    expect(items).toHaveLength(3);
+    expect(items).toHaveLength(4);
     expect(items[0]).toEqual({ key: '20260614005400213232', title: '청년 부동산 중개보수 및 이사비 지원사업' });
     expect(items[1]).toEqual({ key: 'V202600005', title: '2026 서울 청년수당' });
+    expect(items[3]).toEqual({ key: 'R2024112528145', title: '후불 기후동행카드' });
   });
 
   it('빈/비문자 입력 → 빈 배열(throw 금지)', () => {
@@ -49,8 +51,9 @@ describe('parseSeoulListItems', () => {
 });
 
 describe('isSeoulNativeKey', () => {
-  it('V 접두만 서울 자체(수집 대상)', () => {
-    expect(isSeoulNativeKey('V202600005')).toBe(true);
+  it('문자 접두(V·R)=서울 자체 수집, 순수숫자=온통 유입 제외', () => {
+    expect(isSeoulNativeKey('V202600005')).toBe(true); // 청년몽땅 자체 편집
+    expect(isSeoulNativeKey('R2024112528145')).toBe(true); // 서울 원천 등록(정정: 놓쳤던 형식)
     expect(isSeoulNativeKey('20260614005400213232')).toBe(false); // 온통 유입 → 제외
     expect(isSeoulNativeKey('')).toBe(false);
   });
@@ -156,11 +159,12 @@ describe('createSeoulClient', () => {
       requestDelayMs: 0,
       maxPages: 3,
     }).fetchAll();
-    // LIST_HTML 3건 중 V-접두 2건만(숫자 1건 제외). 두 탭 모두 같은 목록이나 key 중복 제거 → 2건.
-    expect(items).toHaveLength(2);
+    // LIST_HTML 4건 중 문자접두 3건(V·V·R) 수집, 숫자 1건 제외. 두 탭 key 중복 제거 → 3건.
+    expect(items).toHaveLength(3);
     const ids = items.map((r) => (r as Record<string, unknown>).id);
     expect(ids).toContain('V202600005');
     expect(ids).toContain('V202500013');
+    expect(ids).toContain('R2024112528145'); // R-접두도 수집(정정)
     expect(ids).not.toContain('20260614005400213232');
     // 상세 크롤로 UA 헤더 부착 확인
     expect(fetchImpl).toHaveBeenCalledWith(
@@ -183,6 +187,6 @@ describe('createSeoulClient', () => {
       maxPages: 3,
     }).fetchAll();
     // 상세가 전부 실패해도 항목은 생성(빈 fields → 어댑팅), 절단 없음.
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
   });
 });
