@@ -13,7 +13,9 @@ import { toRow, fromRow } from './supabaseMapping';
 
 /* c8 ignore start -- 실 Supabase SDK 경계: 키 있는 환경 전용. */
 const TABLE = 'policies';
-const CHUNK = 500;
+// 청크당 벡터(3072차원) upsert + HNSW 인덱스 갱신이 문장 타임아웃에 닿지 않게 작게 유지.
+const CHUNK = 100;
+const WRITE_RETRIES = 3;
 
 export class SupabaseCache implements PolicyCache {
   private client: SupabaseClient;
@@ -65,10 +67,20 @@ export class SupabaseCache implements PolicyCache {
   async writeAll(policies: CachedPolicy[]): Promise<void> {
     const rows = policies.map(toRow);
     for (let i = 0; i < rows.length; i += CHUNK) {
-      const { error } = await this.client
-        .from(this.table)
-        .upsert(rows.slice(i, i + CHUNK), { onConflict: 'id' });
-      if (error) throw new Error(`SupabaseCache.writeAll: ${error.message}`);
+      const chunk = rows.slice(i, i + CHUNK);
+      let lastErr = '';
+      let ok = false;
+      // 청크별 재시도(일시적 statement timeout·혼잡 흡수). 지수 백오프.
+      for (let attempt = 0; attempt < WRITE_RETRIES; attempt += 1) {
+        const { error } = await this.client.from(this.table).upsert(chunk, { onConflict: 'id' });
+        if (!error) {
+          ok = true;
+          break;
+        }
+        lastErr = error.message;
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+      }
+      if (!ok) throw new Error(`SupabaseCache.writeAll: ${lastErr}`);
     }
   }
 }
