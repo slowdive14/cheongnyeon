@@ -1,6 +1,7 @@
 import type { EmbeddingProvider } from '../../retrieval/types';
 import { MAX_EMBED_BATCH, splitIntoBatches } from './batch';
 import { l2normalize } from './normalize';
+import { withRateLimitRetry } from './geminiClient';
 
 /**
  * Gemini 임베딩 제공자 — 색인·위기 2층 앵커용 벡터 생성.
@@ -47,17 +48,15 @@ export function createGeminiEmbeddingProvider(
       const out: number[][] = [];
       for (const batch of splitIntoBatches(texts, MAX_EMBED_BATCH)) {
         let vals: number[][] = [];
-        // 1회 재시도(일시 429/네트워크 흡수). 실패 시 해당 배치만 빈 벡터.
-        for (let attempt = 0; attempt < 2; attempt += 1) {
-          try {
-            const res = await ai.models.embedContent({ model, contents: batch, config });
-            const embeddings = res?.embeddings ?? [];
-            vals = embeddings.map((e) => (Array.isArray(e?.values) ? e.values : []));
-            break;
-          } catch {
-            if (attempt === 0) await new Promise((r) => setTimeout(r, 1500));
-            else vals = [];
-          }
+        // RPM 429는 지수 백오프 재시도(explain과 동일 정책). 크레딧 소진·최종 실패 시 해당 배치만 빈 벡터.
+        try {
+          const res = await withRateLimitRetry(() =>
+            ai.models.embedContent({ model, contents: batch, config }),
+          );
+          const embeddings = res?.embeddings ?? [];
+          vals = embeddings.map((e) => (Array.isArray(e?.values) ? e.values : []));
+        } catch {
+          vals = [];
         }
         // 입력 수만큼 정합(부족/실패분은 빈 벡터 → 호출부 null 처리). 축소 차원은 정규화(코사인 일관성).
         for (let k = 0; k < batch.length; k += 1) {

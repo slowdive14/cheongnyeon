@@ -24,6 +24,56 @@ export interface GeminiClientOptions {
 // gemini-2.5-flash도 2026-06-17 셧다운. 해석·질문·설명 전용(후보·자격 판정 아님).
 const DEFAULT_MODEL = 'gemini-3.5-flash';
 
+/** 에러를 문자열로(메시지·status·code 포함) — 레이트리밋 판별용. */
+function errText(e: unknown): string {
+  if (e == null) return '';
+  if (typeof e === 'string') return e;
+  if (e instanceof Error) {
+    const anyE = e as unknown as Record<string, unknown>;
+    return `${e.message} ${String(anyE.status ?? '')} ${String(anyE.code ?? '')}`;
+  }
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
+
+/**
+ * 재시도 가능한 레이트리밋 오류인가.
+ *  - 재시도O: 429 / RESOURCE_EXHAUSTED / rate / quota (분당 요청 초과 — 백오프하면 회복).
+ *  - 재시도X: 크레딧 소진·결제(credit/depleted/billing/prepay) — 백오프해도 회복 불가 → 즉시 폴백.
+ */
+export function isRetryableRateLimit(err: unknown): boolean {
+  const s = errText(err).toLowerCase();
+  if (/credit|deplet|billing|prepay/.test(s)) return false;
+  return /\b429\b|resource_exhausted|rate limit|ratelimit|too many requests|quota/.test(s);
+}
+
+/**
+ * 레이트리밋 지수 백오프 재시도(순수·주입형). RPM 초과만 재시도, 그 외 오류는 즉시 전파.
+ * sleep 주입으로 테스트 결정성 확보. Retry-After 헤더가 있으면 우선 존중.
+ */
+export async function withRateLimitRetry<T>(
+  fn: () => Promise<T>,
+  opts: { maxRetries?: number; baseDelayMs?: number; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<T> {
+  const maxRetries = opts.maxRetries ?? 5;
+  const base = opts.baseDelayMs ?? 2000;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt >= maxRetries || !isRetryableRateLimit(e)) throw e;
+      const backoff = base * 2 ** attempt + Math.floor(Math.random() * 250);
+      await sleep(backoff);
+      attempt += 1;
+    }
+  }
+}
+
 /** 키 없을 때 사용하는 비활성 LLM(항상 빈 객체 → 호출자가 보수적으로 폴백). */
 export function createDisabledLlmClient(): LlmClient {
   return {
@@ -81,14 +131,17 @@ export function createGeminiClient(opts: GeminiClientOptions = {}): LlmClient {
     async generateStructured(prompt: string, schema?: unknown): Promise<unknown> {
       try {
         const ai = await loadModel(apiKey);
-        const res = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: buildConfig(schema),
-        });
+        // RPM 초과(429)는 지수 백오프 재시도 — 대량 배치에서 후반 요청이 폴백으로 새지 않게.
+        const res = await withRateLimitRetry(() =>
+          ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: buildConfig(schema),
+          }),
+        );
         return parseJson(res?.text);
       } catch {
-        // SDK 로드/호출 실패 → degrade(호출자가 보수적으로 폴백).
+        // SDK 로드/호출 실패(재시도 소진·크레딧 소진·기타) → degrade(호출자가 보수적으로 폴백).
         return {};
       }
     },
