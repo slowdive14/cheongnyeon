@@ -155,6 +155,47 @@ describe('useFunnel', () => {
     expect(t.mock.calls.length).toBe(before);
   });
 
+  // ── C-C4(a): 엔트리(루트+질의없음)는 빈 질의로 traverse → remoteSearch no-op(마운트 검색 제거). ──
+  it('C-C4(a) 루트+queryOverride 없음 → traverse에 빈 질의(concept 폴백 안 함)', async () => {
+    const t = fakeTraverse();
+    renderHook(() =>
+      useFunnel({ graph: mentalHealthGraph, profile: PROFILE, deps: deps(), traverseFn: t }),
+    );
+    await waitFor(() => expect(t).toHaveBeenCalled());
+    // 루트(mh.entry)는 concept이 있어도 검색 질의는 빈 문자열(원격 검색 no-op).
+    const state = t.mock.calls[t.mock.calls.length - 1]?.[1];
+    expect(state?.query).toBe('');
+  });
+
+  it('C-C4(a) 노드 선택(stack 진행) → concept로 검색(버튼 흐름 보존)', async () => {
+    const t = fakeTraverse();
+    const { result } = renderHook(() =>
+      useFunnel({ graph: mentalHealthGraph, profile: PROFILE, deps: deps(), traverseFn: t }),
+    );
+    await waitFor(() => expect(t).toHaveBeenCalled());
+    const before = t.mock.calls.length;
+    act(() => result.current.select('mh.burnout'));
+    await waitFor(() => expect(t.mock.calls.length).toBeGreaterThan(before));
+    const state = t.mock.calls[t.mock.calls.length - 1]?.[1];
+    expect(state?.query).toContain('번아웃'); // 선택 노드 concept 사용
+  });
+
+  it('C-C4(a) queryOverride 있으면 루트여도 그 질의로 검색', async () => {
+    const t = fakeTraverse();
+    renderHook(() =>
+      useFunnel({
+        graph: mentalHealthGraph,
+        profile: PROFILE,
+        deps: deps(),
+        traverseFn: t,
+        queryOverride: '월세가 부담돼요',
+      }),
+    );
+    await waitFor(() => expect(t).toHaveBeenCalled());
+    const state = t.mock.calls[t.mock.calls.length - 1]?.[1];
+    expect(state?.query).toBe('월세가 부담돼요');
+  });
+
   it('crisis 결과 → state.crisis=true, resources 전달', async () => {
     const t = fakeTraverse({
       crisis: { crisis: true, layer: 'regex', resources: [{ label: 'x', phone: '109', available: '24h' }], suppressGeneration: true },
