@@ -1,10 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { FunnelContainer } from '@/ui/funnel/FunnelContainer';
 import { mentalHealthGraph } from '@/domain/graph/domains/mentalHealth';
 import type { TraverseDeps, TraverseResult, TraverseState } from '@/domain/graph/traverse';
 import type { GraphNode, UserProfile } from '@/domain/types';
 import { safetyResources } from '@/domain/safetyResources';
+import { SAVED_STORAGE_KEY } from '@/ui/funnel/savedPoliciesStore';
+
+beforeEach(() => localStorage.clear());
 
 /**
  * Test 5.2 — 위기 화면. 리더 결정 2: 위기 결과를 traverse 주입/모킹으로 검증.
@@ -129,6 +132,26 @@ describe('Test 5.2 — 위기 화면', () => {
     expect(screen.queryByTestId('youth-center-link')).toBeNull();
     expect(main.querySelector('[data-funnel-region="profile-input"]')).toBeNull();
     expect(main.querySelector('[data-funnel-region="youth-center"]')).toBeNull();
+  });
+
+  it('B3 회귀(safety Med-1): 저장 항목이 있어도 위기 시 내 신청함 미렌더', async () => {
+    // 저장함 seed(재방문 상태) — 위기 진입 시에도 SafetyBanner 단독이어야.
+    localStorage.setItem(
+      SAVED_STORAGE_KEY,
+      JSON.stringify([{ id: 'V1', title: '저장된 정책', sourceUrl: 'https://x', savedAt: '2026-07-05T00:00:00Z' }]),
+    );
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={crisisTraverse()}
+      />,
+    );
+    await screen.findByRole('alert');
+    // 내 신청함 섹션·저장 항목 미렌더(위기 격리).
+    expect(screen.queryByTestId('saved-policies')).toBeNull();
+    expect(screen.queryByText('저장된 정책')).toBeNull();
   });
 
   it('C 위기 시 result=null → 정책 카드 0', async () => {
