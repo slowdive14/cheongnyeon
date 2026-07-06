@@ -12,17 +12,59 @@ const SB_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const EMBED_MODEL = 'gemini-embedding-001';
 const DIM = 1536;
+const MAX_QUERY_LEN = 500; // 과대 질의 임베딩 비용·남용 방지.
 
-const CORS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*', // 운영 시 Vercel 도메인으로 좁히기 권장
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+// ★C-C4(b) CORS 화이트리스트: ALLOWED_ORIGINS(콤마구분) 설정 시 그 도메인만 허용.
+//  미설정 → '*'(개발). 운영 배포 시 ALLOWED_ORIGINS=https://<vercel-도메인> 설정 필수.
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter((s) => s.length > 0);
 
-function json(body: unknown, status = 200): Response {
+function allowOrigin(origin: string | null): string {
+  if (ALLOWED_ORIGINS.length === 0) return '*'; // 개발 기본.
+  if (origin && ALLOWED_ORIGINS.includes(origin)) return origin;
+  return ALLOWED_ORIGINS[0]; // 비허용 origin엔 대표 도메인 반환(요청 origin 미반영 = 차단 효과).
+}
+
+function corsHeaders(origin: string | null): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': allowOrigin(origin),
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
+  };
+}
+
+// ★C-C4(c) 레이트리밋: IP 단위 고정창(분당). Gemini 비용 폭탄 방지 1차선.
+//  주의: 서버리스 인스턴스별 인메모리 → 다중 인스턴스 완벽 차단은 아님(버스트 억제용).
+//  강한 보장이 필요하면 Deno KV·테이블로 하드닝(후속). 0 이하면 비활성.
+const RATE_LIMIT_PER_MIN = Number(Deno.env.get('RATE_LIMIT_PER_MIN') ?? '40');
+const rlBucket = new Map<string, { count: number; reset: number }>();
+
+function clientIp(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0]!.trim();
+  return req.headers.get('x-real-ip') ?? 'unknown';
+}
+
+/** true면 한도 초과(429). 창 만료 시 리셋. */
+function isRateLimited(ip: string): boolean {
+  if (RATE_LIMIT_PER_MIN <= 0) return false;
+  const now = Date.now();
+  const w = rlBucket.get(ip);
+  if (!w || now > w.reset) {
+    rlBucket.set(ip, { count: 1, reset: now + 60_000 });
+    return false;
+  }
+  w.count += 1;
+  return w.count > RATE_LIMIT_PER_MIN;
+}
+
+function json(body: unknown, status = 200, origin: string | null = null): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS, 'content-type': 'application/json' },
+    headers: { ...corsHeaders(origin), 'content-type': 'application/json' },
   });
 }
 
@@ -89,18 +131,26 @@ async function rpcSearch(
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+  const origin = req.headers.get('origin');
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(origin) });
+  if (req.method !== 'POST') return json({ error: 'POST only' }, 405, origin);
+
+  // ★C-C4(c) 레이트리밋 — 임베딩(비용) 이전 최우선 게이트.
+  if (isRateLimited(clientIp(req))) {
+    return json({ error: 'rate limited', hits: [], degraded: true }, 429, origin);
+  }
 
   let payload: { query?: unknown; topK?: unknown; hardCategories?: unknown; regionCode?: unknown };
   try {
     payload = await req.json();
   } catch {
-    return json({ error: 'invalid json' }, 400);
+    return json({ error: 'invalid json' }, 400, origin);
   }
 
-  const query = typeof payload.query === 'string' ? payload.query.trim() : '';
-  if (query.length === 0) return json({ hits: [] });
+  const rawQuery = typeof payload.query === 'string' ? payload.query.trim() : '';
+  // 과대 질의 절단(임베딩 비용·남용 방지).
+  const query = rawQuery.slice(0, MAX_QUERY_LEN);
+  if (query.length === 0) return json({ hits: [] }, 200, origin);
 
   const topK = Math.min(Math.max(1, Number(payload.topK) || 10), 30);
   const hardCategories =
@@ -115,12 +165,12 @@ Deno.serve(async (req: Request) => {
 
   const embedding = await embedQuery(query);
   // 임베딩 실패 → 키워드 폴백은 클라이언트 책임(서버는 빈 결과+degraded 신호).
-  if (!embedding) return json({ hits: [], degraded: true });
+  if (!embedding) return json({ hits: [], degraded: true }, 200, origin);
 
   try {
     const hits = await rpcSearch(embedding, query, topK, hardCategories, regionCode);
-    return json({ hits });
+    return json({ hits }, 200, origin);
   } catch (e) {
-    return json({ error: String((e as Error)?.message ?? e) }, 500);
+    return json({ error: String((e as Error)?.message ?? e) }, 500, origin);
   }
 });

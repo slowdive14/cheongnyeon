@@ -79,9 +79,13 @@ export function useFunnel({ graph, profile, deps, traverseFn = defaultTraverse, 
     let cancelled = false;
     setLoading(true);
     setError(false);
-    // 질의: 자유입력(queryOverride) 우선, 없으면 노드 concept(버튼/예시 흐름).
+    // 질의: 자유입력(queryOverride) 우선, 없으면 노드 concept(버튼 흐름).
+    //  ★C-C4(a): 엔트리(루트 + 질의 없음)에서는 concept 폴백을 쓰지 않는다 → 빈 질의 →
+    //  remoteSearch가 no-op(네트워크 0). 마운트마다 원격 검색 1회 낭비 제거(Gemini 비용·부하).
+    //  노드를 실제 선택(stack 진행)했을 때만 concept로 검색해 버튼 흐름은 보존.
     const override = typeof queryOverride === 'string' ? queryOverride.trim() : '';
-    const query = override.length > 0 ? override : currentNode?.concept ?? '';
+    const atRoot = currentNodeId === rootId;
+    const query = override.length > 0 ? override : atRoot ? '' : currentNode?.concept ?? '';
     traverseFn(graph, { nodeId: currentNodeId, query, profile }, deps)
       .then((res) => {
         if (cancelled || reqRef.current !== reqId) return;
