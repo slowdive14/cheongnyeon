@@ -13,6 +13,8 @@ import { ProfileInput } from './ProfileInput';
 import { CrisisFooter } from './CrisisFooter';
 import { SettingsModal } from './SettingsModal';
 import { YouthCenterLink } from './YouthCenterLink';
+import { SavedPolicies } from './SavedPolicies';
+import { useSavedPolicies } from './savedPoliciesStore';
 
 /**
  * 깔때기 조립 — 자유입력 1차 관문(글→질의→정책 직접 노출). 칩은 예시 quick-start(질의 채움).
@@ -55,6 +57,12 @@ export function FunnelContainer({
   // 자유입력 실시간 layer-1 위기(키 무관). traverse 위기와 OR.
   const [freeCrisis, setFreeCrisis] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 내 신청함(F-④) — 관심 정책 저장(localStorage). 위기 시 전체 미렌더(early-return)로 자동 격리.
+  const savedApi = useSavedPolicies();
+  const saveControls = useMemo(
+    () => ({ isSaved: savedApi.isSaved, onToggle: savedApi.toggle }),
+    [savedApi.isSaved, savedApi.toggle],
+  );
 
   const funnel = useFunnel({ graph, profile, deps, traverseFn, queryOverride: query });
 
@@ -146,6 +154,7 @@ export function FunnelContainer({
             onSelectAlternative={onExample}
             profile={profile}
             llm={llm}
+            saveControls={saveControls}
           />
           {/* F-③ 동행 블록: 결과 섹션 하단, CrisisFooter 위 1회 노출(Q-4). 카드마다 반복 금지. */}
           <YouthCenterLink regionCode={profile?.regionCode} />
@@ -158,6 +167,9 @@ export function FunnelContainer({
           <ChoiceChips choices={examples} onSelect={onExample} />
         </section>
       )}
+
+      {/* 내 신청함(F-④): 저장 항목이 있을 때만 노출. 두 화면(입력/결과) 공통 하단 — 재방문 리마인드. */}
+      <SavedPolicies items={savedApi.items} onRemove={savedApi.remove} />
     </main>
   );
 }

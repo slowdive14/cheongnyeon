@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ExternalLink, CalendarClock, Check, HelpCircle } from 'lucide-react';
+import { ExternalLink, CalendarClock, Check, HelpCircle, Bookmark, BookmarkCheck } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import type { EvaluatedPolicy, ReasonCode } from '@/domain/eligibility';
 import type { CachedPolicy } from '@/data/cache/types';
@@ -31,6 +31,10 @@ export interface PolicyResultCardProps {
   profile?: UserProfile;
   /** (예약) '왜 맞는지' 설명 생성 LLM — D-② 재배선용. 현재 미사용(표시·호출 정지). */
   llm?: LlmClient;
+  /** 내 신청함(F-④) 저장 상태. 미지정이면 저장 버튼 미렌더(기존 소비자 호환). */
+  saved?: boolean;
+  /** 저장 토글 콜백. 미지정이면 저장 버튼 미렌더. */
+  onToggleSave?: () => void;
 }
 
 export interface ExplainState {
@@ -110,7 +114,7 @@ function formatUpdatedAt(policy: EvaluatedPolicy['policy']): string | null {
   return format(d, 'yyyy-MM-dd');
 }
 
-export function PolicyResultCard({ item, status, profile }: PolicyResultCardProps) {
+export function PolicyResultCard({ item, status, profile, saved, onToggleSave }: PolicyResultCardProps) {
   const policy = item.policy;
   const title =
     typeof policy?.title === 'string' && policy.title.length > 0 ? policy.title : '제목 미상 정책';
@@ -201,6 +205,22 @@ export function PolicyResultCard({ item, status, profile }: PolicyResultCardProp
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             신청 페이지 열기{origin ? ` (${origin})` : ''}
           </a>
+        ) : null}
+        {onToggleSave ? (
+          <button
+            type="button"
+            onClick={onToggleSave}
+            aria-pressed={saved === true}
+            aria-label={saved ? '내 신청함에서 빼기' : '내 신청함에 저장'}
+            className="flex items-center gap-1 font-medium text-sand-500 hover:text-clay-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+          >
+            {saved ? (
+              <BookmarkCheck className="h-3.5 w-3.5 text-clay-500" aria-hidden="true" />
+            ) : (
+              <Bookmark className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {saved ? '저장됨' : '저장'}
+          </button>
         ) : null}
       </div>
 

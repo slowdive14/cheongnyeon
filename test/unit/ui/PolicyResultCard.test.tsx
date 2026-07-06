@@ -101,6 +101,24 @@ describe('PolicyResultCard', () => {
     expect(screen.getByText('심리상담 비용을 지원합니다.')).toBeInTheDocument();
   });
 
+  it('F-④: onToggleSave 있으면 저장 버튼 렌더, saved=true면 "저장됨"', () => {
+    const onToggleSave = vi.fn();
+    const { rerender } = render(
+      <PolicyResultCard item={item()} status="now" saved={false} onToggleSave={onToggleSave} />,
+    );
+    const btn = screen.getByRole('button', { name: '내 신청함에 저장' });
+    btn.click();
+    expect(onToggleSave).toHaveBeenCalledTimes(1);
+    rerender(<PolicyResultCard item={item()} status="now" saved={true} onToggleSave={onToggleSave} />);
+    expect(screen.getByText('저장됨')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '내 신청함에서 빼기' })).toBeInTheDocument();
+  });
+
+  it('F-④: onToggleSave 없으면 저장 버튼 미렌더(기존 소비자 호환)', () => {
+    render(<PolicyResultCard item={item()} status="now" />);
+    expect(screen.queryByText(/저장/)).toBeNull();
+  });
+
   it('sourceUrl 있으면 원문 링크', () => {
     render(<PolicyResultCard item={item()} status="now" />);
     const link = screen.getByRole('link');

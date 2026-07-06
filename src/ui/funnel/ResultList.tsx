@@ -1,8 +1,14 @@
 import type { EvaluateResult } from '@/domain/eligibility';
-import type { GraphNode, UserProfile } from '@/domain/types';
+import type { GraphNode, Policy, UserProfile } from '@/domain/types';
 import type { LlmClient } from '@/data/parseChunk';
 import { PolicyResultCard, reviewLabels } from './PolicyResultCard';
 import { ChoiceChips } from './ChoiceChips';
+
+/** 내 신청함(F-④) 저장 컨트롤 — 카드별 저장 상태·토글을 상위(FunnelContainer)가 주입. */
+export interface SaveControls {
+  isSaved: (id: string) => boolean;
+  onToggle: (policy: Policy) => void;
+}
 
 /**
  * 결과 목록 — now/soon/review 카드 렌더(blocked만 미노출).
@@ -23,9 +29,18 @@ export interface ResultListProps {
   profile?: UserProfile;
   /** (예약) '왜 맞는지' 설명 LLM — D-② 재배선용. 현재 카드에서 미사용. */
   llm?: LlmClient;
+  /** 내 신청함(F-④) 저장 컨트롤. 미지정이면 카드에 저장 버튼 미렌더. */
+  saveControls?: SaveControls;
 }
 
-export function ResultList({ result, alternatives, onSelectAlternative, profile, llm }: ResultListProps) {
+export function ResultList({
+  result,
+  alternatives,
+  onSelectAlternative,
+  profile,
+  llm,
+  saveControls,
+}: ResultListProps) {
   const nowItems = result?.now ?? [];
   const soonItems = result?.soon ?? [];
   // review는 미확인 항목이 적은(=적격에 가까운) 순으로 노출 — '거의 충족'을 위로.
@@ -34,17 +49,24 @@ export function ResultList({ result, alternatives, onSelectAlternative, profile,
   );
   const showable = nowItems.length + soonItems.length + reviewItems.length;
 
+  // 카드별 저장 상태·토글 결선(saveControls 없으면 저장 버튼 미렌더).
+  const saveProps = (item: (typeof nowItems)[number]) => {
+    const id = item.policy?.id;
+    if (!saveControls || typeof id !== 'string' || id.length === 0) return {};
+    return { saved: saveControls.isSaved(id), onToggleSave: () => saveControls.onToggle(item.policy) };
+  };
+
   if (showable > 0) {
     return (
       <div data-funnel-region="results" className="space-y-3">
         {nowItems.map((item, i) => (
-          <PolicyResultCard key={item.policy?.id ?? `now-${i}`} item={item} status="now" profile={profile} llm={llm} />
+          <PolicyResultCard key={item.policy?.id ?? `now-${i}`} item={item} status="now" profile={profile} llm={llm} {...saveProps(item)} />
         ))}
         {soonItems.map((item, i) => (
-          <PolicyResultCard key={item.policy?.id ?? `soon-${i}`} item={item} status="soon" profile={profile} llm={llm} />
+          <PolicyResultCard key={item.policy?.id ?? `soon-${i}`} item={item} status="soon" profile={profile} llm={llm} {...saveProps(item)} />
         ))}
         {reviewItems.map((item, i) => (
-          <PolicyResultCard key={item.policy?.id ?? `review-${i}`} item={item} status="review" profile={profile} llm={llm} />
+          <PolicyResultCard key={item.policy?.id ?? `review-${i}`} item={item} status="review" profile={profile} llm={llm} {...saveProps(item)} />
         ))}
       </div>
     );
