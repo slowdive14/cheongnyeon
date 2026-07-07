@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Settings } from 'lucide-react';
 import { useFunnel } from './useFunnel';
 import type { TraverseDeps, traverse as traverseType } from '@/domain/graph/traverse';
 import type { GraphNode, UserProfile } from '@/domain/types';
@@ -11,7 +10,6 @@ import { ChoiceChips } from './ChoiceChips';
 import { FreeTextInput } from './FreeTextInput';
 import { ProfileInput } from './ProfileInput';
 import { CrisisFooter } from './CrisisFooter';
-import { SettingsModal } from './SettingsModal';
 import { YouthCenterLink } from './YouthCenterLink';
 import { SavedPolicies } from './SavedPolicies';
 import { useSavedPolicies } from './savedPoliciesStore';
@@ -34,8 +32,6 @@ export interface FunnelContainerProps {
   traverseFn?: typeof traverseType;
   /** (예약) 결과 '왜 맞는지' 설명 생성 LLM — 후속 배선용. */
   llm?: LlmClient;
-  /** 키 저장/삭제 후 호출(App이 LLM/layer-2 환경 재빌드). */
-  onApiKeyChange?: () => void;
   /**
    * 프로필 입력 변경 콜백(App이 profile 상태 소유·병합). 미지정이면 ProfileInput 미렌더
    * (기존 소비자 테스트 호환 — profile 입력이 필요한 배선에서만 전달).
@@ -49,14 +45,12 @@ export function FunnelContainer({
   deps,
   traverseFn,
   llm,
-  onApiKeyChange,
   onProfileChange,
 }: FunnelContainerProps) {
   // 자유입력/예시가 설정하는 검색 질의. 비면 초기(예시) 화면.
   const [query, setQuery] = useState('');
   // 자유입력 실시간 layer-1 위기(키 무관). traverse 위기와 OR.
   const [freeCrisis, setFreeCrisis] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   // 내 신청함(F-④) — 관심 정책 저장(localStorage). 위기 시 전체 미렌더(early-return)로 자동 격리.
   const savedApi = useSavedPolicies();
   const saveControls = useMemo(
@@ -105,28 +99,10 @@ export function FunnelContainer({
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-xl space-y-5 bg-cream-50 px-4 py-6 text-ink-900 sm:px-6">
-      <header data-funnel-region="header" className="flex items-start justify-between gap-2">
-        <div className="space-y-1">
-          <h1 className="text-xl font-medium text-ink-900">요즘 어때요?</h1>
-          <p className="text-sm text-sand-500">지금 상황을 편하게 적어주면, 맞는 정책을 찾아드려요.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          aria-label="설정"
-          className="shrink-0 rounded-lg p-2 text-sand-400 hover:bg-cream-100 hover:text-ink-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
-        >
-          <Settings className="h-5 w-5" aria-hidden="true" />
-        </button>
+      <header data-funnel-region="header" className="space-y-1">
+        <h1 className="text-xl font-medium text-ink-900">요즘 어때</h1>
+        <p className="text-sm text-sand-500">지금 상황을 편하게 적어주면, 맞는 정책을 찾아드려요.</p>
       </header>
-
-      <SettingsModal
-        open={settingsOpen}
-        onClose={() => {
-          setSettingsOpen(false);
-          if (onApiKeyChange) onApiKeyChange();
-        }}
-      />
 
       {/* ★위기 불변식(S3): ProfileInput은 이 비위기 JSX에만 존재한다. 위기 early-return 분기에는
           절대 넣지 말 것(SafetyBanner 단독). 자격 입력이지 검색 입력이 아니므로 header 아래·검색 위. */}
@@ -140,13 +116,6 @@ export function FunnelContainer({
 
       {hasQuery ? (
         <section data-funnel-region="result-section" className="space-y-4">
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            className="text-sm font-medium text-sand-500 hover:text-ink-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
-          >
-            ← 다시 찾기
-          </button>
           {headline ? <h2 className="text-base font-medium text-ink-900">{headline}</h2> : null}
           <ResultList
             result={funnel.result}

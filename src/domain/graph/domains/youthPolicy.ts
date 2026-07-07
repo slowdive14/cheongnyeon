@@ -20,7 +20,7 @@ const exampleNodes: GraphNode[] = [
   },
   {
     id: 'yp.job',
-    label: '일자리·취업을 찾고 있어요',
+    label: '일자리를 찾고 있어요',
     concept: '일자리 취업 구직 창업 직업훈련 인턴',
     keywords: ['일자리', '취업', '구직', '창업'],
     kind: 'leaf',
@@ -34,7 +34,7 @@ const exampleNodes: GraphNode[] = [
   },
   {
     id: 'yp.edu',
-    label: '공부·자격증을 지원받고 싶어요',
+    label: '학비·자격증이 부담돼요',
     concept: '교육 학자금 등록금 자격증 직업훈련 장학금',
     keywords: ['교육', '학자금', '자격증'],
     kind: 'leaf',

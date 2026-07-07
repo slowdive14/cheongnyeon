@@ -6,7 +6,8 @@ import { sidoNameByPrefix } from '@/domain/parse/sido';
  * T-D1b — "나와 맞는 점" 체크리스트 문구 매핑(순수).
  *
  * 안전(DESIGN §7-4):
- *  - pass 축은 "충족(추정)" 의미로만. "자격이 됩니다/안 됩니다" 류 단정 금지.
+ *  - pass 축은 "충족/제한 없음" 사실 서술로만. "자격이 됩니다/안 됩니다" 류 단정 금지.
+ *    ※ '추정' 성격은 카드 하단 DisclaimerNote가 1회 고지(단일 출처) — 항목마다 "(추정)" 중복 표기하지 않는다.
  *  - review 축은 "원문에서 확인" 보수 문구. 부적격/탈락 단정 금지.
  *  - blocked 축은 애초에 카드가 미노출(blocked 버킷 필터)이므로 여기서 항목화하지 않는다(pass/review만).
  *
@@ -25,20 +26,20 @@ export interface ChecklistItem {
 function ageText(policy: Policy, profile: UserProfile | undefined): string {
   const { ageMin, ageMax } = policy;
   // 양쪽 무제한(전국민형): "나이 나이 무관" 라벨 중복·"내 나이 충족" 동어반복 회피(라이브 발견).
-  if (typeof ageMin !== 'number' && typeof ageMax !== 'number') return '나이 제한 없음(추정)';
+  if (typeof ageMin !== 'number' && typeof ageMax !== 'number') return '나이 제한 없음';
   let range: string;
   if (typeof ageMin === 'number' && typeof ageMax === 'number') range = `${ageMin}~${ageMax}세`;
   else if (typeof ageMin === 'number') range = `${ageMin}세 이상`;
   else range = `${ageMax}세 이하`;
   const myAge = typeof profile?.age === 'number' && Number.isFinite(profile.age) ? profile.age : null;
-  return myAge !== null ? `나이 ${range} — 내 나이 ${myAge}세 충족(추정)` : `나이 ${range} 충족(추정)`;
+  return myAge !== null ? `나이 ${range} — 내 나이 ${myAge}세 충족` : `나이 ${range} 충족`;
 }
 
 function regionText(policy: Policy): string {
-  if (policy.isNationwide === true) return '전국 대상 — 지역 충족(추정)';
+  if (policy.isNationwide === true) return '전국 대상 — 지역 충족';
   const first = Array.isArray(policy.regionCodes) ? policy.regionCodes[0] : undefined;
   const name = typeof first === 'string' ? sidoNameByPrefix(first) : undefined;
-  return name ? `${name} 거주 — 내 지역 충족(추정)` : '거주 지역 충족(추정)';
+  return name ? `${name} 거주 — 내 지역 충족` : '거주 지역 충족';
 }
 
 /** pass 축 → 사람 문구. */
@@ -49,7 +50,8 @@ function passText(axis: AxisKind, policy: Policy, profile: UserProfile | undefin
     case 'region':
       return regionText(policy);
     case 'income':
-      return '소득 조건 충족(추정)';
+      // 소득 pass는 소득 무관(none) 정책에서만 발생(소득 미입력 시 상한 정책은 review). → "제한 없음"이 정확.
+      return '소득 제한 없음';
     case 'recruit':
       // 모집 시점은 상태 배지(지금/곧)가 담당 — 체크리스트 중복 노출 회피.
       return null;

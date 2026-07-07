@@ -142,15 +142,14 @@ describe('FunnelContainer + 자유입력 통합', () => {
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 
-  it('UI-9 설정 버튼 → SettingsModal open', async () => {
+  it('UI-9 설정 버튼·모달 없음(Gemini 키 UI 제거)', async () => {
     render(<FunnelContainer graph={mentalHealthGraph} profile={PROFILE} deps={calmDeps()} />);
-    const gear = await screen.findByRole('button', { name: /설정/ });
+    await screen.findByRole('textbox', { name: /상황/ });
+    expect(screen.queryByRole('button', { name: /설정/ })).toBeNull();
     expect(screen.queryByTestId('settings-modal')).toBeNull();
-    fireEvent.click(gear);
-    expect(screen.getByTestId('settings-modal')).toBeInTheDocument();
   });
 
-  it('UI-10 위기 화면 → 설정 미노출(SafetyBanner 단독)', async () => {
+  it('UI-10 자유입력 위기어 → SafetyBanner 단독(입력 미노출)', async () => {
     render(
       <FunnelContainer
         graph={mentalHealthGraph}
@@ -161,7 +160,8 @@ describe('FunnelContainer + 자유입력 통합', () => {
     );
     fireEvent.change(await screen.findByRole('textbox', { name: /상황/ }), { target: { value: '죽고 싶어요' } });
     await screen.findByRole('alert');
-    expect(screen.queryByRole('button', { name: /설정/ })).toBeNull();
+    // 위기 단독 렌더: 입력·설정 미노출.
+    expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByTestId('settings-modal')).toBeNull();
   });
 });

@@ -29,11 +29,18 @@ function policy(over: Partial<Policy> = {}): Policy {
 const profile: UserProfile = { age: 25, region: '부산', regionCode: '26', income: {} };
 
 describe('buildChecklist', () => {
-  it('pass age축 → 나이 범위 + 내 나이 충족(추정)', () => {
+  it('pass age축 → 나이 범위 + 내 나이 충족(항목별 추정 표기 없음)', () => {
     const items = buildChecklist([{ axis: 'age', verdict: 'pass' }], policy({ ageMin: 19, ageMax: 34 }), profile);
     expect(items).toHaveLength(1);
     expect(items[0]!.mark).toBe('pass');
-    expect(items[0]!.text).toMatch(/나이 19~34세 — 내 나이 25세 충족\(추정\)/);
+    expect(items[0]!.text).toBe('나이 19~34세 — 내 나이 25세 충족');
+    expect(items[0]!.text).not.toMatch(/추정/); // 추정 고지는 DisclaimerNote 단일 출처
+  });
+
+  it('pass income축(무관 정책) → "소득 제한 없음"(소득 입력 없으니 충족 아님)', () => {
+    const items = buildChecklist([{ axis: 'income', verdict: 'pass' }], policy(), profile);
+    expect(items[0]!.text).toBe('소득 제한 없음');
+    expect(items[0]!.text).not.toMatch(/충족|추정/);
   });
 
   it('pass region축(비전국 26) → sidoNameByPrefix=부산광역시', () => {
@@ -84,7 +91,7 @@ describe('buildChecklist', () => {
 
   it('profile 미입력 → 나이 범위만("내 나이" 없이)', () => {
     const items = buildChecklist([{ axis: 'age', verdict: 'pass' }], policy({ ageMin: 19, ageMax: 34 }), undefined);
-    expect(items[0]!.text).toMatch(/나이 19~34세 충족\(추정\)/);
+    expect(items[0]!.text).toBe('나이 19~34세 충족');
     expect(items[0]!.text).not.toMatch(/내 나이/);
   });
 

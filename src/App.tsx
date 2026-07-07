@@ -56,8 +56,6 @@ const EMPTY_ENV: LlmEnv = { crisisAnchors: [] };
 export default function App() {
   const [index, setIndex] = useState<IndexedDoc[] | null>(null);
   const [env, setEnv] = useState<LlmEnv>(EMPTY_ENV);
-  // 키 저장/삭제 시 증가 → 환경 재빌드 트리거(설정 모달 닫힘 연계, F1).
-  const [keyEpoch, setKeyEpoch] = useState(0);
   // ── 프로필 소유(결정 2·T10): App이 useProfileState로 소유, ProfileInput onChange → 병합.
   //  안정 참조 유지(변경 시에만 새 객체). ★T8: profile은 아래 search/deps memo 배열에 넣지
   //  않는다(자격 입력이지 검색 입력이 아님). 넣으면 프로필 변경마다 원격 search 함수가 재생성돼
@@ -67,8 +65,9 @@ export default function App() {
   // 마운트 1회 고정 clock(렌더 결정성).
   const now = useMemo(() => new Date(), []);
 
-  // ── LLM/임베딩 환경 빌드(키 게이트). 키 없으면 EMPTY_ENV(layer-2 잠금). ──
-  //  keyEpoch 변경(키 저장/삭제) 시 재빌드 → 같은 세션에서 LLM 모드 즉시 반영(F1).
+  // ── LLM/임베딩 환경 빌드(키 게이트). 키 없으면 EMPTY_ENV(layer-2 잠금, layer-1·검색은 정상). ──
+  //  키 입력 UI는 제거됨(검색은 서버 Edge Function, 설명은 precompute). 기존에 저장된 키가 있으면
+  //  하위호환으로 layer-2를 켠다. 마운트 1회 빌드.
   useEffect(() => {
     let cancelled = false;
     const apiKey = loadApiKey() ?? undefined;
@@ -89,7 +88,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [keyEpoch]);
+  }, []);
 
   // ── 색인 빌드(embed 제공자 있으면 벡터, 없으면 키워드 단독 degrade). throw-free. ──
   useEffect(() => {
@@ -144,7 +143,6 @@ export default function App() {
       profile={profile}
       deps={deps}
       llm={env.llm}
-      onApiKeyChange={() => setKeyEpoch((e) => e + 1)}
       onProfileChange={onProfileChange}
     />
   );

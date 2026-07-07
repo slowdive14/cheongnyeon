@@ -6,10 +6,11 @@ import {
 } from '@/data/static/youthCenters';
 
 /**
- * F-③ 동행 블록 — "혼자 하기 버거우면 OO청년센터가 같이 해줘요" + 온통청년 통일 링크.
+ * F-③ 동행 블록 — "혼자 하기 버거우면 OO청년센터가 같이 해줘요" + 검증된 연락처.
  *
- * 안전 바닥선(날조 0):
- *  - phone/centerName이 null이면 전화·기관명 UI 미렌더. 운영자가 값 채우면 자동 노출.
+ * 안전 바닥선(날조 0) + 실효성:
+ *  - 검증된 연락처(phone 또는 centerName)가 있을 때만 블록 전체를 렌더한다. 둘 다 null이면
+ *    남는 건 온통청년 일반 링크뿐이라 실효가 없어 미렌더(운영자가 연락처 채우면 자동 노출).
  *  - 위기(전문기관 109/1577-0199) 톤과 구분 — 신청 도움 톤만.
  *  - 노출 위치: 결과 섹션 하단, CrisisFooter 위 1회(Q-4). 위기 시 결과 섹션 자체 미렌더.
  */
@@ -20,6 +21,9 @@ export interface YouthCenterLinkProps {
 export function YouthCenterLink({ regionCode }: YouthCenterLinkProps) {
   const center = getYouthCenter(regionCode);
   const message = youthCenterMessage(regionCode);
+
+  // 검증된 연락처가 없으면 미렌더(일반 링크만 남는 무실효 블록 방지).
+  if (!center?.phone && !center?.centerName) return null;
 
   return (
     <div

@@ -231,26 +231,13 @@ describe('Test 5.1 — 깔때기 통합 (경로 A journey)', () => {
     expect(screen.getByText(/이 방향으론 못 찾았어요\. 이런 쪽은 어때요\?/)).toBeInTheDocument();
   });
 
-  it('T-F3/Q-4 동행 블록: 결과 섹션 하단·CrisisFooter 위 1회 노출', async () => {
+  it('T-F3 동행 블록: 검증 연락처 없으면(v1) 미렌더 — 결과·CrisisFooter는 정상', async () => {
     renderFunnel();
     await journeyToBurnoutResult();
     await screen.findAllByTestId('policy-result-card');
-    const centers = screen.getAllByTestId('youth-center-link');
-    expect(centers).toHaveLength(1); // 카드마다 반복 금지, 섹션당 1회.
-    const footer = screen.getByTestId('crisis-footer');
-    // 동행 블록이 CrisisFooter보다 DOM상 먼저(위).
-    const pos = centers[0]!.compareDocumentPosition(footer);
-    expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // 부산(11=서울) 프로필 → 서울특별시 청년센터 문구.
-    expect(within(centers[0]!).getByText(/서울특별시 청년센터가 같이 해줘요/)).toBeInTheDocument();
-  });
-
-  it('T-F3 동행 블록: 위기(전문기관) 문구 부재(층위 구분)', async () => {
-    renderFunnel();
-    await journeyToBurnoutResult();
-    const center = await screen.findByTestId('youth-center-link');
-    expect(within(center).queryByText(/109|1577-0199|자살예방/)).toBeNull();
-    // 검증 안 된 전화번호 부재(날조 0).
-    expect(within(center).queryByText(/\d{2,4}-\d{3,4}-\d{4}/)).toBeNull();
+    // v1: 청년센터 연락처 전량 null → 무실효 블록 미렌더(운영자 검증 입력 시 자동 노출).
+    expect(screen.queryByTestId('youth-center-link')).toBeNull();
+    // 결과 섹션·CrisisFooter는 정상 노출(동행 블록 게이팅이 다른 요소를 해치지 않음).
+    expect(screen.getByTestId('crisis-footer')).toBeInTheDocument();
   });
 });

@@ -250,8 +250,9 @@ describe('T-D1b 나와 맞는 점 체크리스트', () => {
   it('pass age축 → ✓ + "나이 …충족" 문구(자격 단정 아님)', () => {
     const it0 = axesItem([{ axis: 'age', verdict: 'pass' }], { ageMin: 19, ageMax: 34 });
     render(<PolicyResultCard item={it0} status="now" profile={PROFILE} />);
-    expect(screen.getByText(/나이 19~34세/)).toBeInTheDocument();
-    expect(screen.getByText(/내 나이 25세 충족\(추정\)/)).toBeInTheDocument();
+    expect(screen.getByText(/나이 19~34세 — 내 나이 25세 충족/)).toBeInTheDocument();
+    // 항목별 "(추정)" 표기 없음(추정은 DisclaimerNote 단일 고지).
+    expect(screen.getByTestId('policy-checklist').textContent).not.toMatch(/추정/);
     // 자격 단정 금지.
     expect(screen.queryByText(/자격이 (됩|안 됩)/)).toBeNull();
   });
@@ -300,7 +301,7 @@ describe('T-D1b 나와 맞는 점 체크리스트', () => {
   it('profile 미입력 → 나이 문구는 "내 나이" 없이(throw 0)', () => {
     const it0 = axesItem([{ axis: 'age', verdict: 'pass' }], { ageMin: 19, ageMax: 34 });
     expect(() => render(<PolicyResultCard item={it0} status="now" />)).not.toThrow();
-    expect(screen.getByText(/나이 19~34세 충족\(추정\)/)).toBeInTheDocument();
+    expect(screen.getByText('나이 19~34세 충족')).toBeInTheDocument();
   });
 
   it('체크리스트 추가해도 고지·링크 유지', () => {
