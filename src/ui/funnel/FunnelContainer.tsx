@@ -12,6 +12,7 @@ import { ProfileInput } from './ProfileInput';
 import { CrisisFooter } from './CrisisFooter';
 import { YouthCenterLink } from './YouthCenterLink';
 import { SavedPolicies } from './SavedPolicies';
+import { SearchingIndicator } from './SearchingIndicator';
 import { useSavedPolicies } from './savedPoliciesStore';
 
 /**
@@ -116,19 +117,26 @@ export function FunnelContainer({
 
       {hasQuery ? (
         <section data-funnel-region="result-section" className="space-y-4">
-          {headline ? <h2 className="text-base font-medium text-ink-900">{headline}</h2> : null}
-          <ResultList
-            result={funnel.result}
-            alternatives={funnel.alternatives}
-            onSelectAlternative={onExample}
-            profile={profile}
-            llm={llm}
-            saveControls={saveControls}
-          />
-          {/* F-③ 동행 블록: 결과 섹션 하단, CrisisFooter 위 1회 노출(Q-4). 카드마다 반복 금지. */}
-          <YouthCenterLink regionCode={profile?.regionCode} />
-          {/* 비위기 결과 화면 하단 상시 위기 안내 푸터(취약 청년 안전망). */}
-          <CrisisFooter />
+          {/* 검색 대기 중엔 로딩 인디케이터만 — 빈 결과("못 찾았어요")가 잘못 떠서 이탈하는 문제 방지. */}
+          {funnel.loading ? (
+            <SearchingIndicator />
+          ) : (
+            <>
+              {headline ? <h2 className="text-base font-medium text-ink-900">{headline}</h2> : null}
+              <ResultList
+                result={funnel.result}
+                alternatives={funnel.alternatives}
+                onSelectAlternative={onExample}
+                profile={profile}
+                llm={llm}
+                saveControls={saveControls}
+              />
+              {/* F-③ 동행 블록: 결과 섹션 하단, CrisisFooter 위 1회 노출(Q-4). 카드마다 반복 금지. */}
+              <YouthCenterLink regionCode={profile?.regionCode} />
+              {/* 비위기 결과 화면 하단 상시 위기 안내 푸터(취약 청년 안전망). */}
+              <CrisisFooter />
+            </>
+          )}
         </section>
       ) : (
         <section data-funnel-region="examples" className="space-y-2">

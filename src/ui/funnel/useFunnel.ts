@@ -67,11 +67,15 @@ export function useFunnel({ graph, profile, deps, traverseFn = defaultTraverse, 
   const [tr, setTr] = useState<TraverseResult>(SAFE_TRAVERSE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  // 어떤 검색 입력(노드+질의)의 결과가 마지막으로 커밋됐는지. 이걸로 "결과 미커밋=검색 중"을 즉시 판정.
+  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
   // 경합 방지: 최신 요청만 반영.
   const reqRef = useRef(0);
 
   const currentNodeId = stack[stack.length - 1] ?? rootId;
   const currentNode = findNode(graph, currentNodeId);
+  // 검색 입력 키(노드+질의). 질의 제출 즉시 이 키가 바뀌므로, effect가 돌기 전 렌더에서도 loading을 켤 수 있다.
+  const searchKey = `${currentNodeId}|${typeof queryOverride === 'string' ? queryOverride.trim() : ''}`;
 
   useEffect(() => {
     const reqId = reqRef.current + 1;
@@ -91,6 +95,7 @@ export function useFunnel({ graph, profile, deps, traverseFn = defaultTraverse, 
         if (cancelled || reqRef.current !== reqId) return;
         setTr(res ?? SAFE_TRAVERSE);
         setLoading(false);
+        setResolvedKey(searchKey); // 이 입력의 결과 커밋 완료.
       })
       .catch(() => {
         if (cancelled || reqRef.current !== reqId) return;
@@ -98,12 +103,13 @@ export function useFunnel({ graph, profile, deps, traverseFn = defaultTraverse, 
         setTr(SAFE_TRAVERSE);
         setError(true);
         setLoading(false);
+        setResolvedKey(searchKey);
       });
     return () => {
       cancelled = true;
     };
     // currentNodeId·deps·profile·graph·질의 변경 시 재순회.
-  }, [graph, currentNodeId, currentNode, profile, deps, traverseFn, queryOverride]);
+  }, [graph, currentNodeId, currentNode, profile, deps, traverseFn, queryOverride, searchKey]);
 
   const select = useCallback((nodeId: string) => {
     if (typeof nodeId !== 'string' || nodeId.length === 0) return;
@@ -127,7 +133,8 @@ export function useFunnel({ graph, profile, deps, traverseFn = defaultTraverse, 
     result: tr.result,
     nextChoices: tr.nextChoices ?? [],
     alternatives: tr.alternatives ?? [],
-    loading,
+    // 현재 검색 입력의 결과가 아직 커밋되지 않았으면(질의 변경 직후 포함) 검색 중 — 빈 결과 번쩍임 방지.
+    loading: loading || resolvedKey !== searchKey,
     error,
     select,
     back,

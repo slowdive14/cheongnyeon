@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { FunnelContainer } from '@/ui/funnel/FunnelContainer';
 import { mentalHealthGraph } from '@/domain/graph/domains/mentalHealth';
-import type { TraverseDeps } from '@/domain/graph/traverse';
+import type { TraverseDeps, TraverseResult } from '@/domain/graph/traverse';
 import type { EmbeddingProvider, IndexedDoc } from '@/retrieval/types';
 import type { Policy, UserProfile } from '@/domain/types';
 import type { CachedPolicy } from '@/data/cache/types';
@@ -239,5 +239,34 @@ describe('Test 5.1 — 깔때기 통합 (경로 A journey)', () => {
     expect(screen.queryByTestId('youth-center-link')).toBeNull();
     // 결과 섹션·CrisisFooter는 정상 노출(동행 블록 게이팅이 다른 요소를 해치지 않음).
     expect(screen.getByTestId('crisis-footer')).toBeInTheDocument();
+  });
+});
+
+describe('검색 대기 로딩(빈 결과 번쩍임 방지)', () => {
+  it('검색 중(traverse 미완) → SearchingIndicator, 빈결과·카드 미노출', async () => {
+    let resolveIt: (v: TraverseResult) => void = () => {};
+    const pending = new Promise<TraverseResult>((r) => {
+      resolveIt = r;
+    });
+    const traverseFn = vi.fn(() => pending) as unknown as typeof import('@/domain/graph/traverse').traverse;
+    render(
+      <FunnelContainer graph={mentalHealthGraph} profile={PROFILE} deps={deps()} traverseFn={traverseFn} />,
+    );
+    // 질의 채움(갈래 클릭) → 검색 시작. 대기 중엔 로딩 인디케이터만.
+    fireEvent.click(await screen.findByRole('button', { name: /지치고 무기력/ }));
+    expect(await screen.findByTestId('searching')).toBeInTheDocument();
+    expect(screen.queryByTestId('alternatives')).toBeNull();
+    expect(screen.queryByText(/이 방향으론 못 찾았어요/)).toBeNull();
+    expect(screen.queryByTestId('policy-result-card')).toBeNull();
+
+    // 검색 완료(빈 결과) → 인디케이터 사라지고 대안 유도.
+    resolveIt({
+      crisis: { crisis: false, layer: 'none', resources: [], suppressGeneration: false },
+      nextChoices: [],
+      result: { now: [], soon: [], blocked: [], review: [] },
+      alternatives: mentalHealthGraph.children ?? [],
+    });
+    await waitFor(() => expect(screen.queryByTestId('searching')).toBeNull());
+    expect(screen.getByTestId('alternatives')).toBeInTheDocument();
   });
 });
