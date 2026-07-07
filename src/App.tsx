@@ -33,12 +33,14 @@ import { buildCrisisAnchors } from './llm/crisisAnchors';
 //  - regionCode 미입력(undefined) → 지역 정책은 REGION_PROFILE_MISSING로 '확인 필요'(보수 노출).
 //    특정 지역 하드코딩 시 타 지자체 정책이 전부 REGION_MISMATCH로 숨겨져 "결과 없음"이 되므로 금지.
 //  - age 미입력(undefined) → 연령 정책은 AGE_UNKNOWN로 '확인 필요'(보수). 나이 입력 시 정밀 판정.
-//  - income.medianRatio:100 = 알려진 잔여(R1) — 소득 입력 UI 없음. 프로필 조립 시 값 보존.
+//  - income 미입력({}) → 소득 조건 있는 정책은 INCOME_PROFILE_MISSING로 '확인 필요'(보수 노출).
+//    소득 입력 UI는 두지 않는다(정책 77%가 소득 무관, 입력 부담↑). 소득을 모른 채 가짜값(옛 medianRatio:100)을
+//    쓰면 상한<100% 정책이 INCOME_OVER_LIMIT로 잘못 숨겨진다 → 빈 소득으로 두어 '확인 필요'로 노출(안전).
 const INITIAL_PROFILE: UserProfile = {
   age: undefined,
   region: '전국',
   regionCode: undefined,
-  income: { medianRatio: 100 },
+  income: {},
 };
 
 const POLICIES = policiesJson as unknown as CachedPolicy[];

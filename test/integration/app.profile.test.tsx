@@ -67,7 +67,7 @@ function policyFor(id: string, over: Partial<Policy> = {}): CachedPolicy {
   };
 }
 
-const INITIAL_MISSING: UserProfile = { age: undefined, region: '전국', regionCode: undefined, income: { medianRatio: 100 } };
+const INITIAL_MISSING: UserProfile = { age: undefined, region: '전국', regionCode: undefined, income: {} };
 
 /**
  * App 배선 동형 Harness. App.tsx 규율 복제:
