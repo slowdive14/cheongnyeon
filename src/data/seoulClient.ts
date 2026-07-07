@@ -204,6 +204,31 @@ export function seoulRecruitDates(text: string | undefined): { start: string | n
   return { start: found[0] ?? null, end: found[1] ?? null };
 }
 
+/**
+ * 서울 모집창 도출 — 신청기간 우선, 불명 시 사업운영기간 종료일을 보조 마감 신호로.
+ *  1) 신청기간 날짜 있음 → dated(그 기간).
+ *  2) 신청기간이 상시/수시/연중 → '상시'(억제 안 함).
+ *  3) 신청기간 날짜 없음 → 사업운영기간 종료일 있으면 그 기간(끝났으면 마감 처리).
+ *  4) 그 외 → 미설정(unknown, 보수 노출).
+ */
+export function deriveSeoulRecruit(
+  applyText: string | undefined,
+  operationText: string | undefined,
+): { startText?: string; endText?: string; text?: string } {
+  const apply = seoulRecruitDates(applyText);
+  if (apply.start !== null || apply.end !== null) {
+    return { startText: apply.start ?? undefined, endText: apply.end ?? undefined };
+  }
+  if (typeof applyText === 'string' && /상시|수시|연중/.test(applyText)) {
+    return { text: '상시' };
+  }
+  const op = seoulRecruitDates(operationText);
+  if (op.end !== null) {
+    return { startText: op.start ?? undefined, endText: op.end };
+  }
+  return {};
+}
+
 /** 청년몽땅 상세 정본 URL — 원문 링크(항상 존재·안정). */
 export function seoulDetailUrl(key: string, baseUrl: string = DEFAULT_BASE_URL): string {
   const base = baseUrl.replace(/\/+$/, '');
@@ -230,8 +255,12 @@ export function adaptSeoulItem(input: {
   const summary = field(fields, '정책소개', '지원내용', '지원규모');
   const ageText = field(fields, '연령')?.split('(')[0]?.trim();
   const incomeText = field(fields, '소득', '소득요건');
-  const recruitRaw = field(fields, '사업신청기간', '신청기간', '사업운영기간');
-  const { start, end } = seoulRecruitDates(recruitRaw);
+  // 모집창: 신청기간 우선. 신청기간 불명(날짜 없음·상시 아님) 시 사업운영기간 종료일을 보조 마감 신호로.
+  //  상시/수시/연중은 억제하지 않는다(진행 중 사업 오은폐 방지 — 종료일 있을 때만 마감 처리).
+  const recruit = deriveSeoulRecruit(
+    field(fields, '사업신청기간', '신청기간'),
+    field(fields, '사업운영기간'),
+  );
   const orgName = field(fields, '주관기관', '운영기관');
   const policyType = field(fields, '정책유형');
 
@@ -248,8 +277,9 @@ export function adaptSeoulItem(input: {
     ageText,
     incomeText,
     regionText: '서울특별시',
-    recruitStartText: start ?? undefined,
-    recruitEndText: end ?? undefined,
+    recruitStartText: recruit.startText,
+    recruitEndText: recruit.endText,
+    recruitText: recruit.text,
     category,
     sourceUrl: seoulDetailUrl(key, baseUrl),
     orgName: orgName ?? '서울특별시',

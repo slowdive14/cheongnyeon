@@ -179,12 +179,26 @@ export function adaptOntongItem(raw: unknown): Record<string, unknown> {
 
   // 모집창: aplyYmd "YYYYMMDD ~ YYYYMMDD"(0057001 특정기간). 변환 실패 토큰은 미설정(보수).
   //  aplyPrdSeCd 0057002 = 상시 → 'always'(모집 빈값이라 unknown으로 새지 않게).
+  //  ★신청기간 불명 시 사업운영기간(bizPrdEndYmd) 종료일을 보조 마감 신호로: 끝난 사업은 노출 안 함.
+  //   단 상시/연중(isAlways)은 절대 억제하지 않는다(진행 중 사업 오은폐 방지 — 종료일 있을 때만).
   const aply = str(o.aplyYmd);
-  const ymds = aply.match(/\d{8}/g) ?? [];
-  const recruitStartText = ymd8ToIso(ymds[0]) ?? undefined;
-  const recruitEndText = ymd8ToIso(ymds[1]) ?? undefined;
+  const aplyYmds = aply.match(/\d{8}/g) ?? [];
   const isAlways = str(o.aplyPrdSeCd) === '0057002' || /상시|연중|수시/.test(aply);
-  const recruitText = isAlways ? '상시' : undefined;
+  let recruitStartText: string | undefined;
+  let recruitEndText: string | undefined;
+  let recruitText: string | undefined;
+  if (aplyYmds.length > 0) {
+    recruitStartText = ymd8ToIso(aplyYmds[0]) ?? undefined;
+    recruitEndText = ymd8ToIso(aplyYmds[1]) ?? undefined;
+  } else if (isAlways) {
+    recruitText = '상시';
+  } else {
+    const bizEnd = ymd8ToIso((str(o.bizPrdEndYmd).match(/\d{8}/) ?? [])[0]);
+    if (bizEnd) {
+      recruitStartText = ymd8ToIso((str(o.bizPrdBgngYmd).match(/\d{8}/) ?? [])[0]) ?? undefined;
+      recruitEndText = bizEnd;
+    }
+  }
 
   // 지역: zipCd(적용 행정구역 코드)로 판정 — 서울 코드는 '11' 접두.
   //  서울 거주자는 전국 사업의 대상에도 포함되므로, 다수 시·도를 덮는 사업은 '전국'으로,

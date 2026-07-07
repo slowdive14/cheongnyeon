@@ -7,6 +7,7 @@ import {
   seoulRecruitDates,
   seoulDetailUrl,
   adaptSeoulItem,
+  deriveSeoulRecruit,
 } from '@/data/seoulClient';
 import { normalizePolicy } from '@/domain/normalizePolicy';
 
@@ -83,6 +84,27 @@ describe('seoulRecruitDates', () => {
   it('미매칭/undefined → null', () => {
     expect(seoulRecruitDates('상시 모집')).toEqual({ start: null, end: null });
     expect(seoulRecruitDates(undefined)).toEqual({ start: null, end: null });
+  });
+});
+
+describe('deriveSeoulRecruit — 신청기간 우선 + 운영기간 보조 마감', () => {
+  it('신청기간 날짜 있음 → 그 기간(dated)', () => {
+    expect(deriveSeoulRecruit('2026. 6. 1. ~ 2026. 6. 30.', '2020. 1. 1. ~ 2020. 12. 31.')).toEqual({
+      startText: '2026-06-01',
+      endText: '2026-06-30',
+    });
+  });
+  it('신청기간 상시/수시/연중 → 상시(운영기간으로 억제 안 함)', () => {
+    expect(deriveSeoulRecruit('상시 모집', '2020. 1. 1. ~ 2020. 12. 31.')).toEqual({ text: '상시' });
+  });
+  it('신청기간 날짜 없음 + 운영기간 종료일 있음 → 운영기간(끝났으면 마감 신호)', () => {
+    expect(deriveSeoulRecruit(undefined, '2024. 1. 1. ~ 2024. 12. 31.')).toEqual({
+      startText: '2024-01-01',
+      endText: '2024-12-31',
+    });
+  });
+  it('둘 다 날짜 없음 → 미설정(unknown 보수)', () => {
+    expect(deriveSeoulRecruit('접수 방법 참조', '별도 안내')).toEqual({});
   });
 });
 

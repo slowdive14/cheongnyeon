@@ -149,6 +149,50 @@ describe('adaptOntongItem (실 항목 → raw 스키마)', () => {
     expect(r.category).toBe('일자리');
   });
 
+  it('신청기간 불명 + 사업운영기간(bizPrdEndYmd) 종료일 → 보조 마감 신호(recruitEndText)', () => {
+    const r = adaptOntongItem({
+      plcyNo: 'B1',
+      plcyNm: 't',
+      aplyYmd: '', // 신청기간 불명
+      aplyPrdSeCd: '0057001', // 상시 아님
+      bizPrdBgngYmd: '20240101',
+      bizPrdEndYmd: '20241231',
+    });
+    expect(r.recruitStartText).toBe('2024-01-01');
+    expect(r.recruitEndText).toBe('2024-12-31'); // 지난 사업 → recruitStatus에서 closed로 숨김
+    expect(r.recruitText).toBeUndefined();
+  });
+
+  it('상시(aplyPrdSeCd 0057002)는 사업운영기간으로 억제하지 않음(진행 중 오은폐 방지)', () => {
+    const r = adaptOntongItem({
+      plcyNo: 'B2',
+      plcyNm: 't',
+      aplyYmd: '',
+      aplyPrdSeCd: '0057002', // 상시
+      bizPrdEndYmd: '20240101', // 지난 운영기간이어도
+    });
+    expect(r.recruitText).toBe('상시'); // 상시 유지 → always → 노출
+    expect(r.recruitEndText).toBeUndefined();
+  });
+
+  it('신청기간 있으면 사업운영기간 무시(신청기간 우선)', () => {
+    const r = adaptOntongItem({
+      plcyNo: 'B3',
+      plcyNm: 't',
+      aplyYmd: '20260601 ~ 20260630',
+      bizPrdEndYmd: '20240101',
+    });
+    expect(r.recruitStartText).toBe('2026-06-01');
+    expect(r.recruitEndText).toBe('2026-06-30');
+  });
+
+  it('신청기간 불명 + 사업운영기간 공란 → 모집 미설정(unknown 보수)', () => {
+    const r = adaptOntongItem({ plcyNo: 'B4', plcyNm: 't', aplyYmd: '', bizPrdEndYmd: '        ' });
+    expect(r.recruitStartText).toBeUndefined();
+    expect(r.recruitEndText).toBeUndefined();
+    expect(r.recruitText).toBeUndefined();
+  });
+
   it('소득 불명은 none으로 단정하지 않음(0043001 외)', () => {
     const r = adaptOntongItem({ plcyNo: 'Z', plcyNm: 't', earnCndSeCd: '0043002', earnEtcCn: '' });
     expect(r.incomeText).toBeUndefined(); // → normalizePolicy에서 unknown(보수)
