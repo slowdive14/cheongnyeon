@@ -156,6 +156,20 @@ describe('T7 — App이 profile 소유 + ProfileInput 역전파', () => {
   });
 });
 
+describe('T-권고1 — Gemini 키 UI 제거 후 App 배선 위기 라우팅(layer-1 단독 바닥선)', () => {
+  it('키 없는 배선(crisisDeps anchors=[]) + 자유입력 위기어 → SafetyBanner 단독(입력·결과·프로필 미노출)', async () => {
+    render(<AppHarness />);
+    const input = await screen.findByRole('textbox', { name: /상황/ });
+    // layer-2(의미 앵커)는 꺼진 상태(anchors=[]). layer-1 정규식(키 무관)이 단독으로 위기 감지.
+    fireEvent.change(input, { target: { value: '죽고 싶어요' } });
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    // 위기 최우선 불변: 입력·결과·프로필 전부 미노출.
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByTestId('policy-result-card')).toBeNull();
+    expect(screen.queryByTestId('profile-pill')).toBeNull();
+  });
+});
+
 describe('T8 — profile 변경이 원격 search 남발을 유발하지 않음 (deps memo 안정성)', () => {
   it('profile 변경(지역·나이) → traverse 재평가되나 원격 search 호출 증가 없음(query 미변경)', async () => {
     // 원격 search spy 주입. 검색 질의는 노드 concept(변경 없음)만 사용 — profile만 바꾼다.
