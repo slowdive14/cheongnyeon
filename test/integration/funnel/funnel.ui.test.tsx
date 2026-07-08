@@ -213,11 +213,11 @@ describe('Test 5.1 — 깔때기 통합 (경로 A journey)', () => {
     renderFunnel();
     await journeyToBurnoutResult();
     await screen.findAllByTestId('policy-result-card');
-    // 헤드라인 N과 렌더된 카드 수가 정확히 일치(헛개수 금지, blocked 제외).
+    // 헤드라인 N과 렌더된 카드 수가 정확히 일치(헛개수 금지, blocked 제외). 숫자는 그라데이션 span 분할.
     await waitFor(() => {
       const cards = screen.getAllByTestId('policy-result-card');
-      const headline = screen.getByText(/맞을 만한 \d+개를 찾았어요/).textContent ?? '';
-      const n = Number(headline.match(/맞을 만한 (\d+)개/)?.[1]);
+      const headline = screen.getByRole('heading', { level: 1 }).textContent ?? '';
+      const n = Number(headline.match(/딱 맞는 정책 (\d+)개/)?.[1]);
       expect(n).toBe(cards.length);
     });
   });

@@ -9,8 +9,26 @@
 @layer base {
   html {
     font-family: theme('fontFamily.sans');
-    /* 페이지 캔버스도 크림(DESIGN §2 cream-50) — main(max-w-xl) 바깥 영역이 브라우저
-       기본색(다크 모드 등)으로 새지 않게 문서 루트에서 고정. */
-    background-color: theme('colors.cream.50');
+    -webkit-font-smoothing: antialiased;
+    /* 따뜻한 라디얼 그라데이션 캔버스(시안). main(max-w) 바깥이 브라우저 기본색으로 새지 않게 루트 고정.
+       색은 상단이 밝고 아래로 차분해지는 크림→샌드. */
+    background:
+      radial-gradient(120% 60% at 50% -10%, #fbeee0 0%, #f3e9da 45%, #efe6d6 100%) no-repeat;
+    background-color: #efe6d6;
+    color: #2b2622;
+  }
+  body {
+    min-height: 100vh;
+  }
+  /* 상황 서술 부드러운 등장(시안 floatIn). 과하지 않은 페이드+미세 상승(원칙 1: 바운스 금지). */
+  @keyframes floatIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 }

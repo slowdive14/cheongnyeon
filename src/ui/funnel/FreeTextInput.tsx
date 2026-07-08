@@ -24,7 +24,7 @@ export interface FreeTextInputProps {
 export function FreeTextInput({
   onCrisis,
   onSubmit,
-  placeholder = '자취하는데 월세가 벅차요…',
+  placeholder = '예) 자취 중인데 월세가 너무 부담돼요…',
 }: FreeTextInputProps) {
   const [value, setValue] = useState('');
 
@@ -62,9 +62,12 @@ export function FreeTextInput({
   const canSubmit = value.trim().length > 0;
 
   return (
-    <div data-funnel-region="free-input" className="space-y-2">
-      <label htmlFor="free-text-input" className="text-sm font-medium text-sand-600">
-        지금 상황을 편하게 적어주세요
+    <div
+      data-funnel-region="free-input"
+      className="rounded-[22px] border border-[#F0E6D8] bg-white p-[18px] shadow-[0_18px_40px_-18px_rgba(160,90,50,.35),0_2px_6px_rgba(160,90,50,.06)]"
+    >
+      <label htmlFor="free-text-input" className="mb-2.5 block text-[13px] font-semibold text-[#9A8A78]">
+        지금 내 상황
       </label>
       <textarea
         id="free-text-input"
@@ -72,16 +75,17 @@ export function FreeTextInput({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        rows={2}
-        className="w-full resize-none rounded-input border border-sand-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-sand-400 focus:border-clay-500 focus:outline-none"
+        rows={3}
+        className="w-full resize-none border-none bg-transparent p-0 text-[16px] leading-relaxed text-ink-900 placeholder:text-[#B4A99A] focus:outline-none"
       />
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-sand-400">Enter로 찾기 · Shift+Enter 줄바꿈</span>
+      <div className="mt-4 flex items-center justify-between border-t border-[#F3EBDD] pt-3.5">
+        <span className="text-xs text-[#B4A594]">Enter로 찾기 · Shift+Enter 줄바꿈</span>
         <button
           type="button"
           onClick={submit}
           disabled={!canSubmit}
-          className="rounded-full bg-clay-500 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-clay-700 disabled:cursor-not-allowed disabled:bg-sand-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+          style={{ background: canSubmit ? 'linear-gradient(135deg,#D2703F,#B84A2C)' : undefined }}
+          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-[15px] font-semibold text-white shadow-[0_8px_18px_-6px_rgba(184,74,44,.6)] transition disabled:cursor-not-allowed disabled:bg-sand-400 disabled:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
         >
           내 정책 찾기
         </button>

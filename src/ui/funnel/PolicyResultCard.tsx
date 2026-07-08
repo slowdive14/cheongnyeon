@@ -105,6 +105,17 @@ function originLabel(source: unknown): string {
   }
 }
 
+/** 카테고리 태그 색(시안 파스텔) — 키워드 기반, 기본 크림. */
+function categoryTag(category: string | null): { bg: string; text: string } {
+  const c = category ?? '';
+  if (/마음|심리|정신|상담/.test(c)) return { bg: '#EAD3EB', text: '#7A4A7D' };
+  if (/일자리|취업|창업|고용/.test(c)) return { bg: '#D3E8CD', text: '#3F6B45' };
+  if (/주거|월세|주택/.test(c)) return { bg: '#FAD6C0', text: '#B4491F' };
+  if (/교육|학자금|장학|자격/.test(c)) return { bg: '#CFE1EF', text: '#3D678C' };
+  if (/금융|생활|복지|문화/.test(c)) return { bg: '#F8E3AE', text: '#8A6410' };
+  return { bg: '#F1E7D8', text: '#8A7A68' };
+}
+
 /** CachedPolicy.updatedAt만 신선도 보유 — 옵셔널·null-safe로 포맷. */
 function formatUpdatedAt(policy: EvaluatedPolicy['policy']): string | null {
   const raw = (policy as Partial<CachedPolicy>).updatedAt;
@@ -139,42 +150,44 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
         : { label: '몇 가지만 확인하면 돼요', cls: 'bg-warmgray-50 text-warmgray-800 ring-warmgray-800/20' }
       : STATUS_META[status];
 
+  const tag = categoryTag(policy?.category ?? null);
+
   return (
     <article
       data-testid="policy-result-card"
       data-funnel-region="result-card"
-      className="rounded-card border border-sand-200 bg-white p-4"
+      className="rounded-[20px] border border-[#F0E6D8] bg-white p-[17px] shadow-[0_12px_28px_-16px_rgba(160,90,50,.4),0_2px_5px_rgba(160,90,50,.05)]"
     >
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="text-base font-medium text-ink-900">{title}</h3>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${meta.cls}`}
-        >
+      {/* 상단: 카테고리 태그(좌) + 상태 배지(우). 매칭%·임의 지원규모는 표시하지 않음(실데이터만). */}
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        {typeof policy?.category === 'string' && policy.category.length > 0 ? (
+          <span
+            data-testid="policy-category"
+            className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
+            style={{ background: tag.bg, color: tag.text }}
+          >
+            {policy.category}
+          </span>
+        ) : (
+          <span />
+        )}
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${meta.cls}`}>
           {meta.label}
         </span>
       </div>
 
-      {typeof policy?.category === 'string' && policy.category.length > 0 ? (
-        <p className="mt-1">
-          <span
-            data-testid="policy-category"
-            className="inline-block rounded-full bg-cream-100 px-2 py-0.5 text-[11px] font-medium text-sand-600"
-          >
-            {policy.category}
-          </span>
-        </p>
-      ) : null}
+      <h3 className="mb-1 text-[17.5px] font-extrabold tracking-tight text-ink-900">{title}</h3>
 
       {benefit ? (
-        <p data-testid="policy-benefit" className="mt-1.5 text-sm text-ink-800">
+        <p data-testid="policy-benefit" className="text-sm leading-relaxed text-[#6E6054]">
           {benefit}
         </p>
       ) : policy?.summary ? (
-        <p className="mt-1.5 text-sm text-sand-600">{policy.summary}</p>
+        <p className="text-sm leading-relaxed text-[#6E6054]">{policy.summary}</p>
       ) : null}
 
       {checklist.length > 0 ? (
-        <ul data-testid="policy-checklist" className="mt-2.5 space-y-1">
+        <ul data-testid="policy-checklist" className="mt-3 space-y-1">
           {checklist.map((c) => (
             <li key={`${c.axis}-${c.mark}`} className="flex items-start gap-1.5 text-xs text-ink-800">
               {c.mark === 'pass' ? (
@@ -188,48 +201,51 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
         </ul>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-sand-500">
-        {updatedAt ? (
-          <span className="flex items-center gap-1">
-            <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
-            최종 업데이트 {updatedAt}
-          </span>
-        ) : null}
+      {/* 하단 액션: 좌(신선도·저장) / 우(원문 CTA). */}
+      <div className="mt-3.5 flex items-center justify-between gap-2 border-t border-[#F3EBDD] pt-3.5">
+        <div className="flex items-center gap-3 text-xs text-[#B4A594]">
+          {updatedAt ? (
+            <span className="flex items-center gap-1">
+              <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+              최종 업데이트 {updatedAt}
+            </span>
+          ) : null}
+          {onToggleSave ? (
+            <button
+              type="button"
+              onClick={onToggleSave}
+              aria-pressed={saved === true}
+              aria-label={saved ? '내 신청함에서 빼기' : '내 신청함에 저장'}
+              className="flex items-center gap-1 font-semibold text-[#A2937F] hover:text-clay-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+            >
+              {saved ? (
+                <BookmarkCheck className="h-3.5 w-3.5 text-clay-500" aria-hidden="true" />
+              ) : (
+                <Bookmark className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              {saved ? '저장됨' : '저장'}
+            </button>
+          ) : null}
+        </div>
         {sourceUrl ? (
           <a
             href={sourceUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="flex items-center gap-1 font-medium text-clay-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#2B2622] px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#C25A38] focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
           >
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             신청 페이지 열기{origin ? ` (${origin})` : ''}
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           </a>
-        ) : null}
-        {onToggleSave ? (
-          <button
-            type="button"
-            onClick={onToggleSave}
-            aria-pressed={saved === true}
-            aria-label={saved ? '내 신청함에서 빼기' : '내 신청함에 저장'}
-            className="flex items-center gap-1 font-medium text-sand-500 hover:text-clay-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
-          >
-            {saved ? (
-              <BookmarkCheck className="h-3.5 w-3.5 text-clay-500" aria-hidden="true" />
-            ) : (
-              <Bookmark className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-            {saved ? '저장됨' : '저장'}
-          </button>
         ) : null}
       </div>
 
       {/* 브리지(F-①): 링크가 있을 때만 — 링크 없이 뜨면 오도(T-F1). */}
       {sourceUrl ? (
-        <p className="mt-1.5 text-xs text-sand-500">열리는 페이지에서 ‘신청하기’ 버튼을 찾으면 돼요</p>
+        <p className="mt-2 text-xs text-[#A2937F]">열리는 페이지에서 ‘신청하기’ 버튼을 찾으면 돼요</p>
       ) : null}
 
-      <div className="mt-3 border-t border-sand-200 pt-2">
+      <div className="mt-3 border-t border-[#F3EBDD] pt-2.5">
         <DisclaimerNote />
       </div>
     </article>

@@ -29,34 +29,46 @@ export function YouthCenterLink({ regionCode }: YouthCenterLinkProps) {
     <div
       data-testid="youth-center-link"
       data-funnel-region="youth-center"
-      className="rounded-card border border-sand-200 bg-cream-100 p-4"
+      className="rounded-[18px] border border-[#F0DAC4] p-4"
+      style={{ background: 'linear-gradient(135deg,#FBEEE1,#F7E4D2)' }}
     >
-      <p className="flex items-center gap-1.5 text-sm font-medium text-ink-800">
-        <LifeBuoy className="h-4 w-4 shrink-0 text-clay-500" aria-hidden="true" />
-        {message}
-      </p>
+      <div className="flex items-start gap-3">
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-white shadow-[0_2px_6px_rgba(180,110,60,.15)]"
+          aria-hidden="true"
+        >
+          <LifeBuoy className="h-[19px] w-[19px] text-[#C25A38]" />
+        </span>
+        <div className="flex-1">
+          <p className="text-[14.5px] font-bold text-[#3D352D]">{message}</p>
 
-      {/* 검증된 기관명만 노출(null이면 미렌더 — 날조 0). */}
-      {center?.centerName ? (
-        <p className="mt-1 text-xs text-sand-600">{center.centerName}</p>
-      ) : null}
+          {/* 검증된 기관명만 노출(null이면 미렌더 — 날조 0). */}
+          {center?.centerName ? (
+            <p className="mt-1 text-[13px] leading-relaxed text-[#8A7A68]">{center.centerName}</p>
+          ) : null}
 
-      {/* 검증된 전화번호만 노출(null이면 미렌더 — 날조 0). */}
-      {center?.phone ? (
-        <a href={`tel:${center.phone}`} className="mt-1 inline-block text-xs font-medium text-clay-700 hover:underline">
-          {center.phone}
-        </a>
-      ) : null}
-
-      <a
-        href={YOUTH_CENTER_URL}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-clay-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
-      >
-        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-        온통청년에서 청년센터 찾기
-      </a>
+          {/* 검증된 전화번호만 노출(null이면 미렌더 — 날조 0). */}
+          {center?.phone ? (
+            <a
+              href={`tel:${center.phone}`}
+              className="mt-1.5 inline-flex items-center gap-1.5 text-[13.5px] font-bold text-[#C25A38] hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              {center.phone}
+            </a>
+          ) : (
+            <a
+              href={YOUTH_CENTER_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-1.5 inline-flex items-center gap-1.5 text-[13.5px] font-bold text-[#C25A38] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              청년센터 찾기
+            </a>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -60,20 +60,29 @@ export function ProfileInput({ regionCode, age, onChange }: ProfileInputProps) {
 
   return (
     <div data-funnel-region="profile-input">
-      <button
-        type="button"
-        data-testid="profile-pill"
-        onClick={togglePill}
-        aria-expanded={expanded}
-        aria-label="지역·나이 입력"
-        className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-sand-200 bg-white px-4 py-2 text-sm font-medium text-ink-800 hover:border-clay-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
-      >
-        <span>{summaryText(regionCode, age)}</span>
-        <Pencil className="h-3.5 w-3.5 text-sand-500" aria-hidden="true" />
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          data-testid="profile-pill"
+          onClick={togglePill}
+          aria-expanded={expanded}
+          aria-label="지역·나이 입력"
+          style={{ background: 'linear-gradient(135deg,#D8F0C6,#B9E9D4)', borderColor: '#B4E0B8' }}
+          className="flex min-h-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold text-[#2F6B45] shadow-[0_3px_10px_-3px_rgba(90,163,107,.4)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+        >
+          <span
+            className="inline-flex h-2 w-2 rounded-full"
+            style={{ background: '#3FA860', boxShadow: '0 0 0 3px rgba(63,168,96,.22)' }}
+            aria-hidden="true"
+          />
+          <span>{summaryText(regionCode, age)}</span>
+          <Pencil className="h-3.5 w-3.5" style={{ color: '#4E9469' }} aria-hidden="true" />
+        </button>
+        <span className="text-[12.5px] text-[#A2937F]">내 정보 기준으로 맞춤 추천</span>
+      </div>
 
       {expanded ? (
-        <div className="mt-2 grid grid-cols-2 gap-3">
+        <div className="mt-2.5 grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label htmlFor="profile-region" className="text-sm font-medium text-sand-600">
               거주 지역 (시·도)

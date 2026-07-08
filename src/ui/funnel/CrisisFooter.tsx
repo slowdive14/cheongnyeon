@@ -14,18 +14,18 @@ export function CrisisFooter() {
     <footer
       data-testid="crisis-footer"
       data-funnel-region="crisis-footer"
-      className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600"
+      className="rounded-2xl border border-[#ECE2D3] bg-[#FAF5EE] px-4 py-3.5"
     >
-      <p className="font-medium text-slate-700">많이 힘들다면 혼자 견디지 마세요.</p>
-      <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+      <p className="mb-2.5 text-[13px] font-semibold text-[#6E6054]">많이 힘들다면 혼자 견디지 마세요.</p>
+      <ul className="flex flex-wrap gap-2">
         {resources.map((r) => (
           <li key={`${r.label}-${r.phone}`}>
             <a
               href={`tel:${r.phone}`}
-              className="inline-flex items-center gap-1 font-medium text-rose-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-500"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#EDD9D2] bg-white px-3.5 py-2 text-[13px] font-semibold text-[#B23A4A] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-500"
             >
               <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              {r.label} {r.phone}
+              {r.label} <b className="text-[#8E2A38]">{r.phone}</b>
             </a>
           </li>
         ))}

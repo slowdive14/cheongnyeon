@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type CSSProperties } from 'react';
+import { sidoNameByPrefix } from '@/domain/parse/sido';
 import { useFunnel } from './useFunnel';
 import type { TraverseDeps, traverse as traverseType } from '@/domain/graph/traverse';
 import type { GraphNode, UserProfile } from '@/domain/types';
@@ -95,58 +96,108 @@ export function FunnelContainer({
   // 헤드라인 N = 실제 노출 카드 수(now+soon+review 합, blocked 제외 — 헛개수 금지, R-E2).
   const r = funnel.result;
   const showable = (r?.now.length ?? 0) + (r?.soon.length ?? 0) + (r?.review.length ?? 0);
-  // N=0이면 헤드라인 대신 ResultList가 빈결과/대안 문구를 담당(헤드라인 미표시).
-  const headline = showable > 0 ? `상황에 맞을 만한 ${showable}개를 찾았어요` : '';
+  // 결과 헤드라인·맞춤 배지: 검색 완료 + 노출 카드 있을 때만(로딩·빈결과는 각기 담당).
+  const showResultHeader = hasQuery && !funnel.loading && showable > 0;
+  const regionName = profile?.regionCode ? sidoNameByPrefix(profile.regionCode) ?? null : null;
+  const ageStr =
+    typeof profile?.age === 'number' && Number.isFinite(profile.age) ? `${profile.age}세` : null;
+  const matchBadge = [regionName, ageStr].filter((x): x is string => Boolean(x)).join(' · ');
+  const gradientText: CSSProperties = {
+    background: 'linear-gradient(120deg,#E0733F,#C63C7A)',
+    WebkitBackgroundClip: 'text',
+    backgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+  };
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-xl space-y-5 bg-cream-50 px-4 py-6 text-ink-900 sm:px-6">
-      <header data-funnel-region="header" className="space-y-1">
-        <h1 className="text-xl font-medium text-ink-900">요즘 어때</h1>
-        <p className="text-sm text-sand-500">지금 상황을 편하게 적어주면, 맞는 정책을 찾아드려요.</p>
-      </header>
+    <main className="mx-auto min-h-screen w-full max-w-[420px] px-5 pb-8 pt-[22px] text-ink-900">
+      {/* 브랜드 바 (설정 기어 없음 — 키 UI 제거) */}
+      <div data-funnel-region="header" className="mb-5 flex items-center gap-2.5">
+        <div
+          className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] shadow-[0_4px_10px_rgba(184,74,44,.28)]"
+          style={{ background: 'linear-gradient(135deg,#D2703F,#B84A2C)' }}
+          aria-hidden="true"
+        >
+          <div className="h-[11px] w-[11px] rounded-full border-[2.5px] border-white" />
+        </div>
+        <span className="text-sm font-bold tracking-tight text-[#6E5C4E]">청년정책 나침반</span>
+      </div>
 
-      {/* ★위기 불변식(S3): ProfileInput은 이 비위기 JSX에만 존재한다. 위기 early-return 분기에는
-          절대 넣지 말 것(SafetyBanner 단독). 자격 입력이지 검색 입력이 아니므로 header 아래·검색 위. */}
-      <ProfileInput
-        regionCode={profile?.regionCode}
-        age={profile?.age}
-        onChange={onProfileChange ?? (() => {})}
-      />
+      {/* 인사(홈) / 결과 헤드라인(검색 결과) */}
+      {showResultHeader ? (
+        <div className="mb-[18px]" style={{ animation: 'floatIn .3s ease' }}>
+          {matchBadge ? (
+            <div
+              className="mb-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] font-bold text-[#2F6B45]"
+              style={{ background: 'linear-gradient(135deg,#D8F0C6,#B9E9D4)', borderColor: '#B4E0B8' }}
+            >
+              <span className="h-[7px] w-[7px] rounded-full" style={{ background: '#3FA860', boxShadow: '0 0 0 3px rgba(63,168,96,.22)' }} />
+              {matchBadge} 맞춤
+            </div>
+          ) : null}
+          <h1 className="mb-1.5 text-[26px] font-extrabold leading-tight tracking-[-.03em]">
+            딱 맞는 정책 <span style={gradientText}>{showable}개</span> 찾았어요
+          </h1>
+          <p className="text-sm leading-relaxed text-[#8A7A68]">적어주신 내용과 잘 맞는 순서로 보여드려요.</p>
+        </div>
+      ) : !hasQuery ? (
+        <div className="mb-[18px]">
+          <h1 className="mb-2 text-[30px] font-extrabold leading-tight tracking-[-.035em]">
+            요즘 <span style={gradientText}>어때</span>
+          </h1>
+          <p className="text-[15px] leading-relaxed text-[#7C6E60]">지금 상황을 편하게 적어주면, 맞는 정책을 찾아드려요.</p>
+        </div>
+      ) : null}
 
-      <FreeTextInput onCrisis={setFreeCrisis} onSubmit={setQuery} />
+      {/* ★위기 불변식(S3): ProfileInput은 이 비위기 JSX에만 존재한다. 위기 early-return 분기엔 절대 금지. */}
+      <div className="mb-[18px]">
+        <ProfileInput
+          regionCode={profile?.regionCode}
+          age={profile?.age}
+          onChange={onProfileChange ?? (() => {})}
+        />
+      </div>
+
+      <div className="mb-6">
+        <FreeTextInput onCrisis={setFreeCrisis} onSubmit={setQuery} />
+      </div>
 
       {hasQuery ? (
-        <section data-funnel-region="result-section" className="space-y-4">
+        <section data-funnel-region="result-section" className="mb-6">
           {/* 검색 대기 중엔 로딩 인디케이터만 — 빈 결과("못 찾았어요")가 잘못 떠서 이탈하는 문제 방지. */}
           {funnel.loading ? (
             <SearchingIndicator />
           ) : (
-            <>
-              {headline ? <h2 className="text-base font-medium text-ink-900">{headline}</h2> : null}
-              <ResultList
-                result={funnel.result}
-                alternatives={funnel.alternatives}
-                onSelectAlternative={onExample}
-                profile={profile}
-                llm={llm}
-                saveControls={saveControls}
-              />
-              {/* F-③ 동행 블록: 결과 섹션 하단, CrisisFooter 위 1회 노출(Q-4). 카드마다 반복 금지. */}
-              <YouthCenterLink regionCode={profile?.regionCode} />
-              {/* 비위기 결과 화면 하단 상시 위기 안내 푸터(취약 청년 안전망). */}
-              <CrisisFooter />
-            </>
+            <ResultList
+              result={funnel.result}
+              alternatives={funnel.alternatives}
+              onSelectAlternative={onExample}
+              profile={profile}
+              llm={llm}
+              saveControls={saveControls}
+            />
           )}
         </section>
       ) : (
-        <section data-funnel-region="examples" className="space-y-2">
-          <p className="text-sm text-sand-500">이렇게 적는 분들이 많아요</p>
+        <section data-funnel-region="examples" className="mb-6">
+          <div className="mb-3.5 flex items-baseline justify-between">
+            <h2 className="text-[17px] font-extrabold tracking-tight">이런 상황이신가요?</h2>
+            <span className="text-[13px] text-[#A2937F]">탭하면 바로 채워져요</span>
+          </div>
           <ChoiceChips choices={examples} onSelect={onExample} />
         </section>
       )}
 
-      {/* 내 신청함(F-④): 저장 항목이 있을 때만 노출. 두 화면(입력/결과) 공통 하단 — 재방문 리마인드. */}
-      <SavedPolicies items={savedApi.items} onRemove={savedApi.remove} />
+      {/* F-③ 동행 블록(검증 연락처 있을 때만) + 상시 위기 안내 푸터(홈·결과 공통 하단, 취약 청년 안전망). */}
+      <div className="mb-3.5">
+        <YouthCenterLink regionCode={profile?.regionCode} />
+      </div>
+      <CrisisFooter />
+
+      {/* 내 신청함(F-④): 저장 항목이 있을 때만 노출. 두 화면 공통 하단 — 재방문 리마인드. */}
+      <div className="mt-3.5">
+        <SavedPolicies items={savedApi.items} onRemove={savedApi.remove} />
+      </div>
     </main>
   );
 }
