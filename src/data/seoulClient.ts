@@ -206,9 +206,11 @@ export function seoulRecruitDates(text: string | undefined): { start: string | n
 
 /**
  * 서울 모집창 도출 — 신청기간 우선, 불명 시 사업운영기간 종료일을 보조 마감 신호로.
- *  1) 신청기간 날짜 있음 → dated(그 기간).
+ *  1) 신청기간 날짜 있음 → dated(그 기간). (신청기간은 엄격 파서만 — 거친 파싱 개입 없음)
  *  2) 신청기간이 상시/수시/연중 → '상시'(억제 안 함).
- *  3) 신청기간 날짜 없음 → 사업운영기간 종료일 있으면 그 기간(끝났으면 마감 처리).
+ *  3) 사업운영기간 폴백:
+ *     - full-date 쌍(seoulRecruitDates)으로 end 도출되면 그대로.
+ *     - 미도출 시 거친(coarse) 종료일 도출(연.월 말일·연도만·한쪽 물결). 끝 열린 물결은 종료일 없음.
  *  4) 그 외 → 미설정(unknown, 보수 노출).
  */
 export function deriveSeoulRecruit(
@@ -226,7 +228,92 @@ export function deriveSeoulRecruit(
   if (op.end !== null) {
     return { startText: op.start ?? undefined, endText: op.end };
   }
+  // 운영기간 폴백: full-date 쌍이 없더라도 거친 종료일을 시도(연.월/연도만/한쪽 물결).
+  const coarseEnd = coarseOperationEnd(operationText);
+  if (coarseEnd !== null) {
+    return { endText: coarseEnd };
+  }
   return {};
+}
+
+/** 종료부 분리에 쓰는 물결 문자군(ASCII `~`·전각 `～`·변형 `∼`·`〜`). */
+const TILDE_CHARS = '~～∼〜';
+const TILDE_SPLIT_RE = new RegExp(`[${TILDE_CHARS}]`);
+
+/**
+ * 사업운영기간 텍스트 → 거친(coarse) 종료일 ISO(없으면 null). 신청기간엔 절대 쓰지 않는다.
+ *  - 물결(`~`·전각 `～`·변형 `∼`·`〜`) 있으면 **뒤쪽 종료부만** 해석. 없으면 전체를 하나의 기간으로.
+ *  - 세그먼트 내 매칭은 **last-match**(더 늦은 날짜) — `-` 구분자 기간("2023. 3. - 2023. 12.")도
+ *    분할 없이 뒤쪽(종료) 연.월이 잡힌다. 시작월을 종료로 오인해 활성 사업을 은폐하는 사고 방지.
+ *  - 연.월.일 → 그 날짜. 연.월 → 그 달 말일(윤년 정확). 연도만 → '상반기' 06-30, 그 외 12-31.
+ *  - 끝 열린 물결("2026. 5. ~") → null(마감 처리 금지, 진행 중 사업 오은폐 방지).
+ *  - 연도 유효 범위 2000~2099만 인정, `\d{4}`가 더 긴 숫자열 일부면 배제(전화번호·금액 오탐 차단).
+ *  - 결정성: 시계 미사용 — 텍스트→텍스트 변환만.
+ */
+function coarseOperationEnd(text: string | undefined): string | null {
+  if (typeof text !== 'string') return null;
+  const tilde = text.search(TILDE_SPLIT_RE);
+  // 물결 있으면 종료부(뒤쪽)만, 없으면 전체를 종료 구간으로.
+  const endPart = tilde >= 0 ? text.slice(tilde + 1) : text;
+  return coarseEndFromSegment(endPart);
+}
+
+/** 정규식 전역 매칭 중 isPlausibleYear를 통과하는 **마지막**(더 늦은) 것을 반환. */
+function lastPlausibleMatch(segment: string, source: string): RegExpExecArray | null {
+  const re = new RegExp(source, 'g');
+  let last: RegExpExecArray | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(segment)) !== null) {
+    if (isPlausibleYear(segment, m)) last = m;
+    if (m.index === re.lastIndex) re.lastIndex += 1; // 빈 매칭 방어(무한루프 차단).
+  }
+  return last;
+}
+
+/** 단일 구간 문자열 → 거친 종료일 ISO(없으면 null). 각 형식마다 last-match(뒤쪽) 우선. */
+function coarseEndFromSegment(segment: string): string | null {
+  // 연.월.일 (일까지) 우선.
+  const full = lastPlausibleMatch(segment, '(\\d{4})\\s*[.\\-/]\\s*(\\d{1,2})\\s*[.\\-/]\\s*(\\d{1,2})');
+  if (full) {
+    return `${full[1]}-${pad2(full[2]!)}-${pad2(full[3]!)}`;
+  }
+  // 연.월 (일 없음) → 그 달 말일.
+  const ym = lastPlausibleMatch(segment, '(\\d{4})\\s*[.\\-/]\\s*(\\d{1,2})(?!\\s*[.\\-/]\\s*\\d)');
+  if (ym) {
+    return `${ym[1]}-${pad2(ym[2]!)}-${pad2(String(lastDayOfMonth(Number(ym[1]), Number(ym[2]))))}`;
+  }
+  // 연도만 → '상반기' 포함 시 06-30, 그 외(하반기 등) 12-31.
+  const yOnly = lastPlausibleMatch(segment, '(\\d{4})');
+  if (yOnly) {
+    return /상반기/.test(segment) ? `${yOnly[1]}-06-30` : `${yOnly[1]}-12-31`;
+  }
+  return null;
+}
+
+/**
+ * 매칭된 4자리 연도가 실제 연도로 타당한가.
+ *  - 범위 2000~2099(오탐 차단).
+ *  - `\d{4}`가 더 긴 숫자열의 일부면 배제(전화번호 "1577-0199", 금액 "300만원" 등).
+ */
+function isPlausibleYear(segment: string, m: RegExpExecArray): boolean {
+  const year = Number(m[1]);
+  if (year < 2000 || year > 2099) return false;
+  // 연도 4자리 좌우로 숫자가 더 붙어 있으면(긴 숫자열의 일부) 배제.
+  const yStart = m.index + m[0]!.indexOf(m[1]!);
+  const before = segment[yStart - 1];
+  const after = segment[yStart + 4];
+  if (before !== undefined && /\d/.test(before)) return false;
+  if (after !== undefined && /\d/.test(after)) return false;
+  return true;
+}
+
+/** 해당 연·월의 말일(윤년 포함 정확). month는 1~12. */
+function lastDayOfMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function pad2(v: string | number): string {
+  return String(Number(v)).padStart(2, '0');
 }
 
 /** 청년몽땅 상세 정본 URL — 원문 링크(항상 존재·안정). */
