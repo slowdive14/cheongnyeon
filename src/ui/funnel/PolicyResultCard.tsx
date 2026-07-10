@@ -353,7 +353,7 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
             href={sourceUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#2B2622] px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#C25A38] focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500 sm:w-auto sm:justify-start"
+            className="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[linear-gradient(135deg,#D2703F,#B84A2C)] px-4 py-2 text-[13px] font-bold text-white shadow-[0_6px_14px_rgba(184,74,44,.28)] transition-[filter] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500 sm:w-auto sm:justify-start"
           >
             신청 페이지 열기{origin ? ` (${origin})` : ''}
             <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />

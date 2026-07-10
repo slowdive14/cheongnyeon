@@ -34,7 +34,7 @@ const exampleNodes: GraphNode[] = [
   },
   {
     id: 'yp.edu',
-    label: '학비·자격증이 부담돼요',
+    label: '학비·자격증 비용이 부담돼요',
     concept: '교육 학자금 등록금 자격증 직업훈련 장학금',
     keywords: ['교육', '학자금', '자격증'],
     kind: 'leaf',

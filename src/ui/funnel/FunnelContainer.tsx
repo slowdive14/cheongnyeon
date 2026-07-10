@@ -110,14 +110,15 @@ export function FunnelContainer({
   };
 
   // 반응형(DESIGN §3.1): 결과 카드가 실제로 뜰 때만 데스크톱 셸을 넓혀 2열 그리드 수용.
-  // 모바일 폭·홈 화면은 현행 max-w-[420px] 유지. 상단/하단부는 넓은 셸에서도 중앙 레일로 묶어 과폭 방지.
+  // 모바일 폭·홈 화면은 현행 max-w-[420px] 유지.
+  // 넓은 셸에서 상단(헤드라인·검색창)·그리드·하단(동행·위기 푸터)은 전부 같은 폭 — 구획별
+  // 너비가 제각각이면 좌우 모서리가 어긋나 어수선하다(2026-07-10 사용자 피드백으로 중앙 좁힘 레일 제거).
   const wideShell = showResultHeader;
   const shellWidth = wideShell ? 'max-w-[420px] lg:max-w-5xl' : 'max-w-[420px]';
-  const rail = wideShell ? 'lg:mx-auto lg:w-full lg:max-w-xl' : '';
 
   return (
     <main className={`mx-auto min-h-screen w-full ${shellWidth} px-5 pb-8 pt-[22px] text-ink-900`}>
-     <div className={rail}>
+     <div>
       {/* 브랜드 바 (설정 기어 없음 — 키 UI 제거) */}
       <div data-funnel-region="header" className="mb-5 flex items-center gap-2.5">
         <div
@@ -190,13 +191,17 @@ export function FunnelContainer({
         <section data-funnel-region="examples" className="mb-6">
           <div className="mb-3.5 flex items-baseline justify-between">
             <h2 className="text-[17px] font-extrabold tracking-tight">이런 상황이신가요?</h2>
-            <span className="text-[13px] text-[#A2937F]">탭하면 바로 채워져요</span>
+            {/* 입력 수단별 문구 — 모바일(터치)=탭, 데스크톱(lg, 포인터)=클릭. */}
+            <span className="text-[13px] text-[#A2937F]">
+              <span className="lg:hidden">탭하면 바로 채워져요</span>
+              <span className="hidden lg:inline">클릭하면 바로 채워져요</span>
+            </span>
           </div>
           <ChoiceChips choices={examples} onSelect={onExample} />
         </section>
       )}
 
-     <div className={rail}>
+     <div>
       {/* F-③ 동행 블록(검증 연락처 있을 때만) + 상시 위기 안내 푸터(홈·결과 공통 하단, 취약 청년 안전망). */}
       <div className="mb-3.5">
         <YouthCenterLink regionCode={profile?.regionCode} />
