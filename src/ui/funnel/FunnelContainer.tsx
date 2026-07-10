@@ -109,8 +109,15 @@ export function FunnelContainer({
     WebkitTextFillColor: 'transparent',
   };
 
+  // 반응형(DESIGN §3.1): 결과 카드가 실제로 뜰 때만 데스크톱 셸을 넓혀 2열 그리드 수용.
+  // 모바일 폭·홈 화면은 현행 max-w-[420px] 유지. 상단/하단부는 넓은 셸에서도 중앙 레일로 묶어 과폭 방지.
+  const wideShell = showResultHeader;
+  const shellWidth = wideShell ? 'max-w-[420px] lg:max-w-5xl' : 'max-w-[420px]';
+  const rail = wideShell ? 'lg:mx-auto lg:w-full lg:max-w-xl' : '';
+
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[420px] px-5 pb-8 pt-[22px] text-ink-900">
+    <main className={`mx-auto min-h-screen w-full ${shellWidth} px-5 pb-8 pt-[22px] text-ink-900`}>
+     <div className={rail}>
       {/* 브랜드 바 (설정 기어 없음 — 키 UI 제거) */}
       <div data-funnel-region="header" className="mb-5 flex items-center gap-2.5">
         <div
@@ -161,6 +168,7 @@ export function FunnelContainer({
       <div className="mb-6">
         <FreeTextInput onCrisis={setFreeCrisis} onSubmit={setQuery} />
       </div>
+     </div>
 
       {hasQuery ? (
         <section data-funnel-region="result-section" className="mb-6">
@@ -188,6 +196,7 @@ export function FunnelContainer({
         </section>
       )}
 
+     <div className={rail}>
       {/* F-③ 동행 블록(검증 연락처 있을 때만) + 상시 위기 안내 푸터(홈·결과 공통 하단, 취약 청년 안전망). */}
       <div className="mb-3.5">
         <YouthCenterLink regionCode={profile?.regionCode} />
@@ -198,6 +207,7 @@ export function FunnelContainer({
       <div className="mt-3.5">
         <SavedPolicies items={savedApi.items} onRemove={savedApi.remove} />
       </div>
+     </div>
     </main>
   );
 }

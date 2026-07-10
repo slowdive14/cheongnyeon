@@ -58,7 +58,12 @@ export function ResultList({
 
   if (showable > 0) {
     return (
-      <div data-funnel-region="results" className="space-y-3">
+      <div
+        data-testid="results-list"
+        data-funnel-region="results"
+        // 모바일 1열(space-y). 데스크톱(lg)만 2열 그리드 — 카드 높이 불균등은 자연 흐름(items-start), masonry 불필요. DESIGN §3.1.
+        className="space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0"
+      >
         {nowItems.map((item, i) => (
           <PolicyResultCard key={item.policy?.id ?? `now-${i}`} item={item} status="now" profile={profile} llm={llm} {...saveProps(item)} />
         ))}

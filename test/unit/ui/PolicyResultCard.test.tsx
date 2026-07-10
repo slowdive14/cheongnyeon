@@ -238,6 +238,12 @@ describe('T-F1 절벽 완화 카피(신청 페이지 열기 + 브리지)', () =>
     expect(screen.queryByRole('link')).toBeNull();
     expect(screen.queryByText(/‘신청하기’ 버튼을 찾으면 돼요/)).toBeNull();
   });
+
+  it('하단 메타 줄 → flex-wrap(좁은 폭 줄바꿈, 저장 글자 세로 꺾임 방지, DESIGN §3.2)', () => {
+    render(<PolicyResultCard item={item()} status="now" saved={false} onToggleSave={vi.fn()} />);
+    const actions = screen.getByTestId('policy-card-actions');
+    expect(actions.className).toMatch(/flex-wrap/);
+  });
 });
 
 describe('T-D1b 나와 맞는 점 체크리스트', () => {

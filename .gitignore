@@ -15,3 +15,5 @@ coverage-report.json
 .env
 .env.*
 !.env.example
+
+.vercel

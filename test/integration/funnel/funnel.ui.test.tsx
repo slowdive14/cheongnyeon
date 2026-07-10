@@ -112,6 +112,15 @@ describe('Test 5.1 — 깔때기 통합 (경로 A journey)', () => {
     expect(cards.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('A2 결과 화면 → 데스크톱 넓힘 셸(lg:max-w-5xl)로 2열 그리드 수용(DESIGN §3.1)', async () => {
+    renderFunnel();
+    await journeyToBurnoutResult();
+    const card = (await screen.findAllByTestId('policy-result-card'))[0]!;
+    const main = card.closest('main')!;
+    // 결과 노출 시 데스크톱 컨테이너 확장(모바일 폭은 현행 유지).
+    expect(main.className).toMatch(/lg:max-w-5xl/);
+  });
+
   it("B '추정' 고지 노출", async () => {
     renderFunnel();
     await journeyToBurnoutResult();

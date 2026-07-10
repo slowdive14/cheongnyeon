@@ -201,12 +201,15 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
         </ul>
       ) : null}
 
-      {/* 하단 액션: 좌(신선도·저장) / 우(원문 CTA). */}
-      <div className="mt-3.5 flex items-center justify-between gap-2 border-t border-[#F3EBDD] pt-3.5">
-        <div className="flex items-center gap-3 text-xs text-[#B4A594]">
+      {/* 하단 액션: 좌(신선도·저장) / 우(원문 CTA). 좁은 폭에선 flex-wrap으로 CTA가 전폭 한 줄로 내려감 — '저장' 글자 세로 꺾임 방지(DESIGN §3.2). */}
+      <div
+        data-testid="policy-card-actions"
+        className="mt-3.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5 border-t border-[#F3EBDD] pt-3.5"
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#B4A594]">
           {updatedAt ? (
-            <span className="flex items-center gap-1">
-              <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <CalendarClock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               최종 업데이트 {updatedAt}
             </span>
           ) : null}
@@ -216,12 +219,12 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
               onClick={onToggleSave}
               aria-pressed={saved === true}
               aria-label={saved ? '내 신청함에서 빼기' : '내 신청함에 저장'}
-              className="flex items-center gap-1 font-semibold text-[#A2937F] hover:text-clay-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+              className="-m-3.5 flex items-center gap-1 whitespace-nowrap p-3.5 font-semibold text-[#A2937F] hover:text-clay-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
             >
               {saved ? (
-                <BookmarkCheck className="h-3.5 w-3.5 text-clay-500" aria-hidden="true" />
+                <BookmarkCheck className="h-3.5 w-3.5 shrink-0 text-clay-500" aria-hidden="true" />
               ) : (
-                <Bookmark className="h-3.5 w-3.5" aria-hidden="true" />
+                <Bookmark className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               )}
               {saved ? '저장됨' : '저장'}
             </button>
@@ -232,10 +235,10 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
             href={sourceUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#2B2622] px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#C25A38] focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+            className="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#2B2622] px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#C25A38] focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500 sm:w-auto sm:justify-start"
           >
             신청 페이지 열기{origin ? ` (${origin})` : ''}
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           </a>
         ) : null}
       </div>

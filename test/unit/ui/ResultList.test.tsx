@@ -131,4 +131,13 @@ describe('ResultList', () => {
     );
     expect(screen.queryByTestId('alternatives')).toBeNull();
   });
+
+  it('결과 목록 컨테이너 → 데스크톱 2열 그리드 클래스(반응형, DESIGN §3.1)', () => {
+    const result: EvaluateResult = { now: [ev('now-1', 'now')], soon: [ev('soon-1', 'soon')], blocked: [], review: [] };
+    render(<ResultList result={result} alternatives={[]} onSelectAlternative={vi.fn()} />);
+    const results = screen.getByTestId('results-list');
+    // 모바일 1열(space-y) 유지 + lg에서 2열 그리드로 전환.
+    expect(results.className).toMatch(/lg:grid-cols-2/);
+    expect(results.className).toMatch(/space-y-3/);
+  });
 });
