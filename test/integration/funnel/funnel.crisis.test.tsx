@@ -130,6 +130,9 @@ describe('Test 5.2 — 위기 화면', () => {
     expect(screen.queryByTestId('profile-pill')).toBeNull();
     expect(screen.queryByTestId('policy-checklist')).toBeNull();
     expect(screen.queryByTestId('youth-center-link')).toBeNull();
+    // T-F5: 신청 준비 펼침(F-⑤) 우회 렌더 금지 — 위기 시 결과 카드 자체가 없으므로 토글·로드맵도 미렌더.
+    expect(screen.queryByRole('button', { name: /신청 준비 같이 보기/ })).toBeNull();
+    expect(screen.queryByTestId('apply-roadmap')).toBeNull();
     expect(main.querySelector('[data-funnel-region="profile-input"]')).toBeNull();
     expect(main.querySelector('[data-funnel-region="youth-center"]')).toBeNull();
   });

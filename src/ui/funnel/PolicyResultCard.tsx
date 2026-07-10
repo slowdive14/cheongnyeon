@@ -1,5 +1,14 @@
-import { useMemo } from 'react';
-import { ExternalLink, CalendarClock, Check, HelpCircle, Bookmark, BookmarkCheck } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  ExternalLink,
+  CalendarClock,
+  Check,
+  HelpCircle,
+  Bookmark,
+  BookmarkCheck,
+  ChevronDown,
+  ClipboardList,
+} from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import type { EvaluatedPolicy, ReasonCode } from '@/domain/eligibility';
 import type { CachedPolicy } from '@/data/cache/types';
@@ -8,6 +17,7 @@ import type { LlmClient } from '@/data/parseChunk';
 // D-② 재배선 대비 explain 정의 보존(호출은 정지 — Q-3 리더 확정). 표시·호출 없어도 export는 유지.
 import { explainMatch, type GroundingRecord } from '@/llm/explain';
 import { buildChecklist } from './policyChecklist';
+import { getDocument, type DocumentInfo } from '@/data/static/documents';
 import { DisclaimerNote } from './DisclaimerNote';
 
 /**
@@ -125,6 +135,39 @@ function formatUpdatedAt(policy: EvaluatedPolicy['policy']): string | null {
   return format(d, 'yyyy-MM-dd');
 }
 
+/**
+ * 신청 준비 3단계(F-⑤) — 정책별 절차 날조 금지, 어떤 정책에나 공통되는 일반 단계만 고정.
+ * 보조문은 "~해요/~하면 돼요" 수준의 안내로만. 자격 단정("신청하면 됩니다") 금지(안전 불변).
+ */
+const APPLY_STEPS: readonly { n: string; title: string; hint: string }[] = [
+  { n: '1', title: '서류 준비', hint: '공통 서류(등본)부터 챙기고, 필요 서류는 원문에서 확인해요' },
+  { n: '2', title: '신청 방법 확인', hint: "아래 '신청 페이지 열기'에서 방법을 확인해요" },
+  { n: '3', title: '결과 기다리기', hint: '접수하면 결과 안내를 기다리면 돼요' },
+];
+
+/** "자주 쓰는 서류" 대표 목록 — 서류 사전(documents.ts) 확정값만. 존재하는 id만 통과(날조 0). */
+const COMMON_DOCS: readonly DocumentInfo[] = [
+  'resident_copy',
+  'income_cert',
+  'family_relation',
+  'employment_cert',
+].map((id) => getDocument(id)).filter((d): d is DocumentInfo => d !== undefined);
+
+/** "오늘은 이것만" 첫 걸음 — 정책 무관 공통 서류(등본). 특정 정책 필요 서류로 단정하지 않는다. */
+const FIRST_STEP_DOC = getDocument('resident_copy');
+
+/** 수수료 표기 — 무료(0)/유료(원)/불확실(null)→"확인 필요". 지어내기 금지. */
+function feeText(fee: number | null): string {
+  if (fee === null) return '확인 필요';
+  if (fee === 0) return '무료';
+  return `${fee.toLocaleString()}원`;
+}
+
+/** 소요 표기 — null이면 지어내지 않고 미표기(null 반환). */
+function minutesText(min: number | null): string | null {
+  return min === null ? null : `약 ${min}분`;
+}
+
 export function PolicyResultCard({ item, status, profile, saved, onToggleSave }: PolicyResultCardProps) {
   const policy = item.policy;
   const title =
@@ -151,6 +194,10 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
       : STATUS_META[status];
 
   const tag = categoryTag(policy?.category ?? null);
+
+  // F-⑤ 신청 준비 펼침 — 카드 로컬 상태(전역 저장 불필요). 기본 접힘.
+  const [expanded, setExpanded] = useState(false);
+  const firstDocMinutes = FIRST_STEP_DOC ? minutesText(FIRST_STEP_DOC.estMinutes) : null;
 
   return (
     <article
@@ -200,6 +247,77 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
           ))}
         </ul>
       ) : null}
+
+      {/* F-⑤ 신청 준비 펼침(동행) — 기본 접힘. 기존 CTA·저장·브리지·고지 위에 삽입(중복 배치 금지, DESIGN §4). */}
+      <div className="mt-3.5 border-t border-[#F3EBDD] pt-3">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="-m-2 flex min-h-[44px] w-full items-center justify-between gap-2 p-2 text-[13.5px] font-semibold text-clay-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+        >
+          <span className="flex items-center gap-1.5">
+            <ClipboardList className="h-4 w-4 shrink-0" aria-hidden="true" />
+            신청 준비 같이 보기
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+
+        {expanded ? (
+          <div className="mt-2 space-y-3">
+            {/* 신청 3단계 — 고정 일반 단계(정책별 절차 날조 금지). */}
+            <ol data-testid="apply-roadmap" className="space-y-2.5">
+              {APPLY_STEPS.map((s) => (
+                <li key={s.n} className="flex items-start gap-2.5">
+                  <span
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-clay-50 text-[11px] font-bold text-clay-700"
+                    aria-hidden="true"
+                  >
+                    {s.n}
+                  </span>
+                  <div>
+                    <p className="text-[13.5px] font-semibold text-ink-900">{s.title}</p>
+                    <p className="text-xs leading-relaxed text-sand-600">{s.hint}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+
+            {/* "오늘은 이것만" — 최소 첫 걸음 1개. 서류 사전 확정값만, 정책별 필요 서류는 원문 확인 프레임. */}
+            <div data-testid="today-only" className="rounded-[14px] bg-clay-50 p-3">
+              <p className="text-[13px] font-bold text-clay-700">오늘은 이것만</p>
+              {FIRST_STEP_DOC ? (
+                <p className="mt-1 text-[13px] text-clay-700">
+                  {FIRST_STEP_DOC.name} 1통 · {FIRST_STEP_DOC.issuer}
+                  {firstDocMinutes ? ` · ${firstDocMinutes}` : ''}
+                </p>
+              ) : null}
+              <p className="mt-1 text-xs leading-relaxed text-clay-700/80">
+                필요 서류는 원문에서 확인해요
+              </p>
+            </div>
+
+            {/* 자주 쓰는 서류 사전 — 발급처·수수료·소요(null은 "확인 필요"/미표기, 날조 0). */}
+            <div data-testid="doc-dictionary">
+              <p className="text-xs font-semibold text-sand-600">자주 쓰는 서류</p>
+              <ul className="mt-1 space-y-1">
+                {COMMON_DOCS.map((d) => {
+                  const min = minutesText(d.estMinutes);
+                  return (
+                    <li key={d.id} className="text-xs leading-relaxed text-ink-800">
+                      <span className="font-semibold">{d.name}</span> · {d.issuer} · {feeText(d.fee)}
+                      {min ? ` · ${min}` : ''}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        ) : null}
+      </div>
 
       {/* 하단 액션: 좌(신선도·저장) / 우(원문 CTA). 좁은 폭에선 flex-wrap으로 CTA가 전폭 한 줄로 내려감 — '저장' 글자 세로 꺾임 방지(DESIGN §3.2). */}
       <div
