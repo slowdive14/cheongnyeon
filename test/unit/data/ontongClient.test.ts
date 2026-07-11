@@ -163,16 +163,44 @@ describe('adaptOntongItem (실 항목 → raw 스키마)', () => {
     expect(r.recruitText).toBeUndefined();
   });
 
-  it('상시(aplyPrdSeCd 0057002)는 사업운영기간으로 억제하지 않음(진행 중 오은폐 방지)', () => {
+  it('상시 + 운영기간 종료일 → 운영기간을 모집창으로(상시 = "운영기간 내 상시", 2026-07-11)', () => {
+    // 서울 deriveSeoulRecruit와 동일 의미 — "그 해 동안 상시"가 영구 상시로 남는 구멍 차단.
     const r = adaptOntongItem({
       plcyNo: 'B2',
       plcyNm: 't',
       aplyYmd: '',
       aplyPrdSeCd: '0057002', // 상시
-      bizPrdEndYmd: '20240101', // 지난 운영기간이어도
+      bizPrdBgngYmd: '20240101',
+      bizPrdEndYmd: '20241231', // 2024년 한 해 운영 → 종료 후 closed로 숨김
     });
-    expect(r.recruitText).toBe('상시'); // 상시 유지 → always → 노출
+    expect(r.recruitStartText).toBe('2024-01-01');
+    expect(r.recruitEndText).toBe('2024-12-31');
+    expect(r.recruitText).toBeUndefined();
+  });
+
+  it('상시 + 운영기간 없음 → 상시 유지(진행 중 오은폐 방지 불변식)', () => {
+    const r = adaptOntongItem({
+      plcyNo: 'B2a',
+      plcyNm: 't',
+      aplyYmd: '',
+      aplyPrdSeCd: '0057002',
+      bizPrdEndYmd: '',
+    });
+    expect(r.recruitText).toBe('상시');
     expect(r.recruitEndText).toBeUndefined();
+  });
+
+  it('상시 + 미래 운영기간 → 미래 종료의 모집창(마감 전까지 노출 유지)', () => {
+    const r = adaptOntongItem({
+      plcyNo: 'B2b',
+      plcyNm: 't',
+      aplyYmd: '',
+      aplyPrdSeCd: '0057002',
+      bizPrdBgngYmd: '20990101',
+      bizPrdEndYmd: '20991231', // 먼 미래 — recruitStatus가 now/soon으로 판정(은폐 없음)
+    });
+    expect(r.recruitEndText).toBe('2099-12-31');
+    expect(r.recruitText).toBeUndefined();
   });
 
   it('신청기간 있으면 사업운영기간 무시(신청기간 우선)', () => {

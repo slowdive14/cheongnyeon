@@ -179,8 +179,9 @@ export function adaptOntongItem(raw: unknown): Record<string, unknown> {
 
   // 모집창: aplyYmd "YYYYMMDD ~ YYYYMMDD"(0057001 특정기간). 변환 실패 토큰은 미설정(보수).
   //  aplyPrdSeCd 0057002 = 상시 → 'always'(모집 빈값이라 unknown으로 새지 않게).
-  //  ★신청기간 불명 시 사업운영기간(bizPrdEndYmd) 종료일을 보조 마감 신호로: 끝난 사업은 노출 안 함.
-  //   단 상시/연중(isAlways)은 절대 억제하지 않는다(진행 중 사업 오은폐 방지 — 종료일 있을 때만).
+  //  ★상시 = "운영기간 내 상시"(서울 deriveSeoulRecruit와 동일 의미, 2026-07-11): 상시여도
+  //   사업운영기간 종료일(bizPrdEndYmd)이 있으면 그 기간을 모집창으로 — "그 해 동안 상시"가
+  //   영구 상시로 남아 종료 사업이 계속 노출되는 구멍 차단. 종료일 없으면 상시 유지(오은폐 방지).
   const aply = str(o.aplyYmd);
   const aplyYmds = aply.match(/\d{8}/g) ?? [];
   const isAlways = str(o.aplyPrdSeCd) === '0057002' || /상시|연중|수시/.test(aply);
@@ -190,13 +191,13 @@ export function adaptOntongItem(raw: unknown): Record<string, unknown> {
   if (aplyYmds.length > 0) {
     recruitStartText = ymd8ToIso(aplyYmds[0]) ?? undefined;
     recruitEndText = ymd8ToIso(aplyYmds[1]) ?? undefined;
-  } else if (isAlways) {
-    recruitText = '상시';
   } else {
     const bizEnd = ymd8ToIso((str(o.bizPrdEndYmd).match(/\d{8}/) ?? [])[0]);
     if (bizEnd) {
       recruitStartText = ymd8ToIso((str(o.bizPrdBgngYmd).match(/\d{8}/) ?? [])[0]) ?? undefined;
       recruitEndText = bizEnd;
+    } else if (isAlways) {
+      recruitText = '상시';
     }
   }
 
