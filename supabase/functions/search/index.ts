@@ -101,7 +101,19 @@ async function embedQuery(text: string): Promise<number[] | null> {
   }
 }
 
-/** search_policies RPC 호출(PostgREST, service_role → RLS 우회). */
+/** RPC 행에서 embedding 제거 — vector(1536)는 건당 ~19KB JSON인데 클라(fromRow)는 미사용.
+ *  topK=10 기준 응답 204KB→~11KB(egress 5GB/월 최대 낭비 요인·모바일 지연 제거). */
+function stripEmbedding(rows: unknown[]): unknown[] {
+  return rows.map((r) => {
+    if (r !== null && typeof r === 'object' && !Array.isArray(r)) {
+      const { embedding: _omit, ...rest } = r as Record<string, unknown>;
+      return rest;
+    }
+    return r;
+  });
+}
+
+/** search_policies RPC 호출(PostgREST, service_role → RLS 우회). 응답에서 embedding 제거. */
 async function rpcSearch(
   embedding: number[],
   qText: string,
@@ -127,7 +139,7 @@ async function rpcSearch(
   });
   if (!res.ok) throw new Error(`rpc ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  return Array.isArray(data) ? data : [];
+  return Array.isArray(data) ? stripEmbedding(data) : [];
 }
 
 Deno.serve(async (req: Request) => {

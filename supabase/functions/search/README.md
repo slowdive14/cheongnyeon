@@ -7,7 +7,7 @@
 `POST /functions/v1/search`
 ```json
 요청: { "query": "월세가 부담돼요", "topK": 10, "hardCategories": null }
-응답: { "hits": [ { ...policy row(snake_case)... } ] }
+응답: { "hits": [ { ...policy row(snake_case)... } ] }   // embedding 컬럼 제외(건당 ~19KB, 클라 미사용 — egress 절감)
 실패: { "hits": [], "degraded": true }   // 임베딩 실패 → 클라가 키워드 폴백
 ```
 
