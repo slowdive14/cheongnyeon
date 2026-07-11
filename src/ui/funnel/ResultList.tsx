@@ -3,6 +3,7 @@ import type { GraphNode, Policy, UserProfile } from '@/domain/types';
 import type { LlmClient } from '@/data/parseChunk';
 import { PolicyResultCard, reviewLabels } from './PolicyResultCard';
 import { ChoiceChips } from './ChoiceChips';
+import { dedupeYearVariants } from './dedupeYearVariants';
 
 /** 내 신청함(F-④) 저장 컨트롤 — 카드별 저장 상태·토글을 상위(FunnelContainer)가 주입. */
 export interface SaveControls {
@@ -41,10 +42,17 @@ export function ResultList({
   llm,
   saveControls,
 }: ResultListProps) {
-  const nowItems = result?.now ?? [];
-  const soonItems = result?.soon ?? [];
+  // 렌더 직전 1회 후처리: 정책의 연도 변형은 그룹당 대표 1개만 노출(버킷 횡단, 전멸 금지).
+  // blocked는 애초에 미노출이므로 dedupe 대상에서 제외한다(안전 표면 무접촉).
+  const deduped = dedupeYearVariants({
+    now: result?.now ?? [],
+    soon: result?.soon ?? [],
+    review: result?.review ?? [],
+  });
+  const nowItems = deduped.now;
+  const soonItems = deduped.soon;
   // review는 미확인 항목이 적은(=적격에 가까운) 순으로 노출 — '거의 충족'을 위로.
-  const reviewItems = [...(result?.review ?? [])].sort(
+  const reviewItems = [...deduped.review].sort(
     (a, b) => reviewLabels(a.reasons).length - reviewLabels(b.reasons).length,
   );
   const showable = nowItems.length + soonItems.length + reviewItems.length;

@@ -132,6 +132,29 @@ describe('ResultList', () => {
     expect(screen.queryByTestId('alternatives')).toBeNull();
   });
 
+  it('연도 변형 후처리 — now 올해판 + review 작년판 → now판만 노출', () => {
+    const result: EvaluateResult = {
+      now: [ev('a', 'now')],
+      soon: [],
+      blocked: [],
+      review: [ev('b', 'unknown', ['AGE_UNKNOWN'])],
+    };
+    // 제목을 연도 변형으로 세팅(ev는 title=id이므로 직접 주입).
+    (result.now[0]!.policy as { title: string }).title = '2026년 X 지원사업';
+    (result.review[0]!.policy as { title: string }).title = '2025년 X 지원사업';
+    render(<ResultList result={result} alternatives={[]} onSelectAlternative={vi.fn()} />);
+    const cards = screen.getAllByTestId('policy-result-card');
+    expect(cards).toHaveLength(1);
+    expect(screen.getByText('2026년 X 지원사업')).toBeInTheDocument();
+    expect(screen.queryByText('2025년 X 지원사업')).toBeNull();
+  });
+
+  it('연도 변형 아님(단일 결과) → 후처리 무영향', () => {
+    const result: EvaluateResult = { now: [ev('solo', 'now')], soon: [], blocked: [], review: [] };
+    render(<ResultList result={result} alternatives={[]} onSelectAlternative={vi.fn()} />);
+    expect(screen.getAllByTestId('policy-result-card')).toHaveLength(1);
+  });
+
   it('결과 목록 컨테이너 → 데스크톱 2열 그리드 클래스(반응형, DESIGN §3.1)', () => {
     const result: EvaluateResult = { now: [ev('now-1', 'now')], soon: [ev('soon-1', 'soon')], blocked: [], review: [] };
     render(<ResultList result={result} alternatives={[]} onSelectAlternative={vi.fn()} />);

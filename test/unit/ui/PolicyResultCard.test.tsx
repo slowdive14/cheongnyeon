@@ -175,6 +175,18 @@ describe('PolicyResultCard', () => {
     expect(screen.getByTestId('policy-category')).toHaveTextContent('주거');
   });
 
+  it('카테고리 중복 표기 버그 — "일자리,일자리" → "일자리" 1회만', () => {
+    render(<PolicyResultCard item={item({ category: '일자리,일자리' })} status="now" />);
+    // 콤마 분리 후 중복 제거 — 텍스트에 "일자리"가 정확히 1회만.
+    expect(screen.getByTestId('policy-category')).toHaveTextContent('일자리');
+    expect(screen.getByTestId('policy-category').textContent).toBe('일자리');
+  });
+
+  it('카테고리 서로 다른 다중 태그는 보존(중복만 제거)', () => {
+    render(<PolicyResultCard item={item({ category: '일자리, 주거, 일자리' })} status="now" />);
+    expect(screen.getByTestId('policy-category').textContent).toBe('일자리, 주거');
+  });
+
   // T-D1c — "왜 맞을까요" prose 표시 제거(Q-3: 표시 제거 + 호출 정지, 정의는 D-② 대비 보존).
   it('T-D1c: llm 없으면 설명 미표시', () => {
     render(<PolicyResultCard item={item()} status="now" />);

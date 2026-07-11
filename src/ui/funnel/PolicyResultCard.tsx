@@ -126,6 +126,19 @@ function categoryTag(category: string | null): { bg: string; text: string } {
   return { bg: '#F1E7D8', text: '#8A7A68' };
 }
 
+/**
+ * 카테고리 표시 문자열 — 콤마 분리 후 중복 토큰 제거·재조합("일자리,일자리"→"일자리").
+ * 색 매칭(categoryTag)은 원문 category를 그대로 쓰므로 영향 없음(표기만 정리).
+ */
+function displayCategory(category: string): string {
+  const seen: string[] = [];
+  for (const part of category.split(',')) {
+    const t = part.trim();
+    if (t.length > 0 && !seen.includes(t)) seen.push(t);
+  }
+  return seen.join(', ');
+}
+
 /** CachedPolicy.updatedAt만 신선도 보유 — 옵셔널·null-safe로 포맷. */
 function formatUpdatedAt(policy: EvaluatedPolicy['policy']): string | null {
   const raw = (policy as Partial<CachedPolicy>).updatedAt;
@@ -213,7 +226,7 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
             className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
             style={{ background: tag.bg, color: tag.text }}
           >
-            {policy.category}
+            {displayCategory(policy.category)}
           </span>
         ) : (
           <span />

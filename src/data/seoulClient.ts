@@ -207,11 +207,14 @@ export function seoulRecruitDates(text: string | undefined): { start: string | n
 /**
  * 서울 모집창 도출 — 신청기간 우선, 불명 시 사업운영기간 종료일을 보조 마감 신호로.
  *  1) 신청기간 날짜 있음 → dated(그 기간). (신청기간은 엄격 파서만 — 거친 파싱 개입 없음)
- *  2) 신청기간이 상시/수시/연중 → '상시'(억제 안 함).
- *  3) 사업운영기간 폴백:
+ *  2) 사업운영기간에서 종료일 도출:
  *     - full-date 쌍(seoulRecruitDates)으로 end 도출되면 그대로.
- *     - 미도출 시 거친(coarse) 종료일 도출(연.월 말일·연도만·한쪽 물결). 끝 열린 물결은 종료일 없음.
- *  4) 그 외 → 미설정(unknown, 보수 노출).
+ *     - 미도출 시 거친(coarse) 종료일(연.월 말일·연도만·한쪽 물결·종료부 연도 상속).
+ *  3) 신청기간이 상시/수시/연중 **이며 운영 종료일이 도출되면 dated**로 재해석("운영기간 내 상시").
+ *     "2024년 한 해 동안 상시"가 영구 상시로 오노출되던 구멍을 막는다.
+ *  4) 상시인데 운영 종료일 미도출(운영기간 없음·끝 열림 "2026. 5. ~") → '상시' 유지.
+ *     → **진행 중 상시 사업 오은폐 금지**(핵심 보수 불변식). 마감 비교는 런타임 엔진 몫.
+ *  5) 그 외 → 미설정(unknown, 보수 노출).
  */
 export function deriveSeoulRecruit(
   applyText: string | undefined,
@@ -221,17 +224,20 @@ export function deriveSeoulRecruit(
   if (apply.start !== null || apply.end !== null) {
     return { startText: apply.start ?? undefined, endText: apply.end ?? undefined };
   }
-  if (typeof applyText === 'string' && /상시|수시|연중/.test(applyText)) {
-    return { text: '상시' };
-  }
+  const isAlways = typeof applyText === 'string' && /상시|수시|연중/.test(applyText);
+  // 신청기간에 날짜가 없다 — 상시여도 운영기간에서 종료일이 도출되면 '운영기간 내 상시'로 재해석.
   const op = seoulRecruitDates(operationText);
   if (op.end !== null) {
     return { startText: op.start ?? undefined, endText: op.end };
   }
-  // 운영기간 폴백: full-date 쌍이 없더라도 거친 종료일을 시도(연.월/연도만/한쪽 물결).
+  // 운영기간 폴백: full-date 쌍이 없더라도 거친 종료일을 시도(연.월/연도만/한쪽 물결/연도 상속).
   const coarseEnd = coarseOperationEnd(operationText);
   if (coarseEnd !== null) {
     return { endText: coarseEnd };
+  }
+  // 종료일 미도출 + 상시 → 상시 유지(진행 중 오은폐 방지).
+  if (isAlways) {
+    return { text: '상시' };
   }
   return {};
 }
@@ -246,6 +252,7 @@ const TILDE_SPLIT_RE = new RegExp(`[${TILDE_CHARS}]`);
  *  - 세그먼트 내 매칭은 **last-match**(더 늦은 날짜) — `-` 구분자 기간("2023. 3. - 2023. 12.")도
  *    분할 없이 뒤쪽(종료) 연.월이 잡힌다. 시작월을 종료로 오인해 활성 사업을 은폐하는 사고 방지.
  *  - 연.월.일 → 그 날짜. 연.월 → 그 달 말일(윤년 정확). 연도만 → '상반기' 06-30, 그 외 12-31.
+ *  - 종료부에 연도가 없고("2024. 1. ~ 12.") 시작부에 연도가 있으면 **시작 연도 상속**(inheritedEndFromSegment).
  *  - 끝 열린 물결("2026. 5. ~") → null(마감 처리 금지, 진행 중 사업 오은폐 방지).
  *  - 연도 유효 범위 2000~2099만 인정, `\d{4}`가 더 긴 숫자열 일부면 배제(전화번호·금액 오탐 차단).
  *  - 결정성: 시계 미사용 — 텍스트→텍스트 변환만.
@@ -255,7 +262,49 @@ function coarseOperationEnd(text: string | undefined): string | null {
   const tilde = text.search(TILDE_SPLIT_RE);
   // 물결 있으면 종료부(뒤쪽)만, 없으면 전체를 종료 구간으로.
   const endPart = tilde >= 0 ? text.slice(tilde + 1) : text;
-  return coarseEndFromSegment(endPart);
+  const direct = coarseEndFromSegment(endPart);
+  if (direct !== null) return direct;
+  // 종료부에 연도가 없으면 시작부(물결 앞) 연도를 상속해 재시도.
+  if (tilde >= 0) {
+    return inheritedEndFromSegment(text.slice(0, tilde), endPart);
+  }
+  return null;
+}
+
+/**
+ * 종료부에 연도가 없을 때 시작부의 연도를 상속해 거친 종료일 도출(없으면 null).
+ *  - 시작부에서 (연도, 시작월)을, 종료부에서 "월.일" 또는 "월"을 읽는다.
+ *  - "2024. 1. ~ 12." → 종료부 "12." = 월 → 2024-12-31. "… ~ 12. 20." = 월.일 → 2024-12-20.
+ *  - 종료월 < 시작월이면 해넘김으로 보아 **연도 +1 보정**("2024. 11. ~ 3." → 2025-03-31).
+ *    보수적 선택: +1이면 실제보다 늦게 마감 처리 → 오은폐 없음(미도출은 마감 놓침이라 열위).
+ *  - 숫자 해석 불능(월 없음·범위 이탈)이면 null(미도출 → unknown 노출 유지).
+ */
+function inheritedEndFromSegment(startPart: string, endPart: string): string | null {
+  const startMatch = lastPlausibleMatch(startPart, '(\\d{4})\\s*[.\\-/]\\s*(\\d{1,2})');
+  if (!startMatch) return null;
+  const startYear = Number(startMatch[1]);
+  const startMonth = Number(startMatch[2]);
+  // 종료부: "월.일"(두 숫자) 우선, 없으면 "월"(한 숫자). 연도가 없어야 여기 도달(direct가 이미 처리).
+  const md = /(\d{1,2})\s*[.\-/]\s*(\d{1,2})/.exec(endPart);
+  // mOnly는 **날짜 형태 숫자만** 수용(오은폐 방지): 앞에 숫자 없고(긴 숫자열 배제),
+  // 뒤가 날짜 구분자(.,-,/)·`월`·문자열 끝일 때만 월로 채택. "5명"·"6개월"·"100명"은 배제 → null → 상시 유지.
+  const mOnly = /(?<!\d)(\d{1,2})(?=\s*(?:[.\-/월]|$))/.exec(endPart);
+  let month: number;
+  let day: number | null;
+  if (md) {
+    month = Number(md[1]);
+    day = Number(md[2]);
+  } else if (mOnly) {
+    month = Number(mOnly[1]);
+    day = null;
+  } else {
+    return null;
+  }
+  if (month < 1 || month > 12) return null;
+  const year = month < startMonth ? startYear + 1 : startYear; // 해넘김 +1 보정.
+  const endDay = day ?? lastDayOfMonth(year, month);
+  if (endDay < 1 || endDay > lastDayOfMonth(year, month)) return null;
+  return `${year}-${pad2(month)}-${pad2(endDay)}`;
 }
 
 /** 정규식 전역 매칭 중 isPlausibleYear를 통과하는 **마지막**(더 늦은) 것을 반환. */
