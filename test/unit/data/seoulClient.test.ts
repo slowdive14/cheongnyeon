@@ -234,6 +234,32 @@ describe('adaptSeoulItem → 공통 raw 스키마', () => {
     expect(r.source).toBe('seoul-youth');
   });
 
+  it('제출서류 필드 → documentsText 원문 발췌(trim)', () => {
+    const f = parseSeoulDetail(`
+      <dl>
+        <dt>제출서류</dt><dd>주민등록등본 1부, 소득금액증명 1부</dd>
+      </dl>`);
+    const r = adaptSeoulItem({ key: 'V1', title: '테스트', fields: f });
+    expect(r.documentsText).toBe('주민등록등본 1부, 소득금액증명 1부');
+  });
+
+  it('제출서류 쓰레기값("--> --> -" 등 화살표·대시·공백만) → null(노이즈 가드)', () => {
+    // 실데이터 노이즈: 한글/의미 텍스트 없이 화살표·대시·공백만 남는 값.
+    expect(adaptSeoulItem({ key: 'V1', title: 't', fields: { 제출서류: '--> --> -' } }).documentsText).toBeNull();
+    expect(adaptSeoulItem({ key: 'V1', title: 't', fields: { 제출서류: '- - -' } }).documentsText).toBeNull();
+    expect(adaptSeoulItem({ key: 'V1', title: 't', fields: { 제출서류: '→ →' } }).documentsText).toBeNull();
+  });
+
+  it('제출서류 필드 없음 → documentsText null(섹션 미노출)', () => {
+    const r = adaptSeoulItem({ key: 'V1', title: 't', fields: {} });
+    expect(r.documentsText).toBeNull();
+  });
+
+  it('한글 2자 이상 포함하면 유효(가드 통과)', () => {
+    const r = adaptSeoulItem({ key: 'V1', title: 't', fields: { 제출서류: '등본 등 서류' } });
+    expect(r.documentsText).toBe('등본 등 서류');
+  });
+
   it('마음건강 제목 → category="마음건강"(하드필터 대상)', () => {
     const r = adaptSeoulItem({ key: 'V202500013', title: '2025 서울 청년 마음건강 지원사업', fields: {} });
     expect(r.category).toBe('마음건강');

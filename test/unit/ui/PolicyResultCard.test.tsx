@@ -19,6 +19,7 @@ function policy(over: Partial<CachedPolicy> = {}): CachedPolicy {
     regionText: null,
     isNationwide: true,
     recruit: { kind: 'always', start: null, end: null },
+    documentsText: null,
     category: '마음건강',
     sourceUrl: 'https://example.com/p1',
     source: 'ontong',
@@ -258,71 +259,102 @@ describe('T-F1 절벽 완화 카피(신청 페이지 열기 + 브리지)', () =>
   });
 });
 
-describe('F-⑤ 신청 준비 펼침(동행)', () => {
+describe('F-⑤ 제출 서류 원문 발췌 펼침(동행)', () => {
+  const DOCS_TEXT = '주민등록등본 1부\n소득금액증명 1부\n(해당자에 한함) 재직증명서';
+
   function toggle() {
     return screen.getByRole('button', { name: /신청 준비 같이 보기/ });
   }
 
-  it('기본 접힘 — 3단계·오늘은 이것만 미표시, 토글 aria-expanded=false', () => {
-    render(<PolicyResultCard item={item()} status="now" />);
-    expect(toggle()).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByTestId('apply-roadmap')).toBeNull();
-    expect(screen.queryByTestId('today-only')).toBeNull();
-    expect(screen.queryByTestId('doc-dictionary')).toBeNull();
+  it('documentsText 없으면 토글 자체 미렌더(빈 일반 안내 금지 — "없는 게 낫다")', () => {
+    render(<PolicyResultCard item={item({ documentsText: null })} status="now" />);
+    expect(screen.queryByRole('button', { name: /신청 준비 같이 보기/ })).toBeNull();
+    expect(screen.queryByTestId('documents-excerpt')).toBeNull();
   });
 
-  it('토글 클릭 → 펼침(aria-expanded=true) + 신청 3단계 렌더', () => {
-    render(<PolicyResultCard item={item()} status="now" />);
+  it('쓰레기값(화살표·대시만)은 정규화 단계에서 null → 토글 미렌더', () => {
+    // 도메인/데이터 계층이 null로 정규화하므로 카드엔 null로 도착(카드는 null만 신뢰).
+    render(<PolicyResultCard item={item({ documentsText: null })} status="now" />);
+    expect(screen.queryByRole('button', { name: /신청 준비 같이 보기/ })).toBeNull();
+  });
+
+  it('documentsText 있으면 토글 렌더 — 기본 접힘(aria-expanded=false, 발췌 미표시)', () => {
+    render(<PolicyResultCard item={item({ documentsText: DOCS_TEXT })} status="now" />);
+    expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('documents-excerpt')).toBeNull();
+  });
+
+  it('토글 클릭 → 펼침(aria-expanded=true) + "제출 서류 (원문 그대로)" 헤더 + 원문 발췌', () => {
+    render(<PolicyResultCard item={item({ documentsText: DOCS_TEXT })} status="now" />);
     fireEvent.click(toggle());
     expect(toggle()).toHaveAttribute('aria-expanded', 'true');
-    const roadmap = screen.getByTestId('apply-roadmap');
-    expect(roadmap).toHaveTextContent('서류 준비');
-    expect(roadmap).toHaveTextContent('신청 방법 확인');
-    expect(roadmap).toHaveTextContent('결과 기다리기');
-  });
-
-  it('"오늘은 이것만" 박스 — 확정 서류 데이터만(등본·정부24·5분)', () => {
-    render(<PolicyResultCard item={item()} status="now" />);
-    fireEvent.click(toggle());
-    const box = screen.getByTestId('today-only');
-    expect(box).toHaveTextContent('오늘은 이것만');
-    expect(box).toHaveTextContent('주민등록등본');
-    expect(box).toHaveTextContent('정부24');
-    expect(box).toHaveTextContent(/5분/);
-    // 정책별 필요 서류 단정 금지 → 원문 확인 프레임 유지.
+    const box = screen.getByTestId('documents-excerpt');
+    expect(box).toHaveTextContent('제출 서류 (원문 그대로)');
+    // 원문 문자 그대로 발췌(가공·요약 금지).
+    expect(box).toHaveTextContent('주민등록등본 1부');
+    expect(box).toHaveTextContent('소득금액증명 1부');
+    expect(box).toHaveTextContent('(해당자에 한함) 재직증명서');
+    // 신청 전 원문 확인 프레임 유지.
     expect(box).toHaveTextContent(/원문에서 확인/);
   });
 
-  it('자주 쓰는 서류 — null 필드(재직증명서)는 "확인 필요"(수수료·소요 날조 금지)', () => {
-    render(<PolicyResultCard item={item()} status="now" />);
+  it('원문 발췌는 whitespace-pre-wrap으로 줄바꿈 보존', () => {
+    render(<PolicyResultCard item={item({ documentsText: DOCS_TEXT })} status="now" />);
     fireEvent.click(toggle());
-    const docs = screen.getByTestId('doc-dictionary');
-    expect(docs).toHaveTextContent('재직증명서');
-    expect(docs).toHaveTextContent(/확인 필요/);
-    // 확정 서류는 발급처·무료 노출.
-    expect(docs).toHaveTextContent('소득금액증명');
+    const raw = screen.getByTestId('documents-excerpt-raw');
+    expect(raw.className).toMatch(/whitespace-pre-wrap/);
+    expect(raw.textContent).toBe(DOCS_TEXT);
   });
 
-  it('자격 단정 문구 부재(펼침 후에도)', () => {
-    render(<PolicyResultCard item={item()} status="now" />);
+  it('서류 사전 — 발췌문에 이름이 등장하는 서류만 발급처 안내(등본·소득금액증명)', () => {
+    render(<PolicyResultCard item={item({ documentsText: DOCS_TEXT })} status="now" />);
+    fireEvent.click(toggle());
+    const guide = screen.getByTestId('doc-guide');
+    // 등장 서류: 발급처·수수료 노출.
+    expect(guide).toHaveTextContent('주민등록등본');
+    expect(guide).toHaveTextContent('정부24');
+    expect(guide).toHaveTextContent(/무료/);
+    expect(guide).toHaveTextContent('소득금액증명');
+    // 재직증명서는 fee/estMinutes null → "확인 필요", 소요 미표기(날조 금지).
+    expect(guide).toHaveTextContent('재직증명서');
+    expect(guide).toHaveTextContent(/확인 필요/);
+  });
+
+  it('서류 사전 — 발췌에 없는 서류는 미노출(필요 서류 암시 금지)', () => {
+    render(<PolicyResultCard item={item({ documentsText: '주민등록등본 1부' })} status="now" />);
+    fireEvent.click(toggle());
+    const guide = screen.getByTestId('doc-guide');
+    expect(guide).toHaveTextContent('주민등록등본');
+    // 발췌에 없는 서류는 안내에 등장하지 않음.
+    expect(guide).not.toHaveTextContent('소득금액증명');
+    expect(guide).not.toHaveTextContent('가족관계증명서');
+  });
+
+  it('발췌에 사전 매칭 서류가 하나도 없으면 doc-guide 미렌더(발췌만)', () => {
+    render(<PolicyResultCard item={item({ documentsText: '자세한 사항은 공고문 참조' })} status="now" />);
+    fireEvent.click(toggle());
+    expect(screen.getByTestId('documents-excerpt')).toBeInTheDocument();
+    expect(screen.queryByTestId('doc-guide')).toBeNull();
+  });
+
+  it('자격 단정·날조 문구 부재(펼침 후에도)', () => {
+    render(<PolicyResultCard item={item({ documentsText: DOCS_TEXT })} status="now" />);
     fireEvent.click(toggle());
     expect(screen.queryByText(/자격이 됩니다|신청하면 됩니다|자격이 (됩|안 됩)/)).toBeNull();
-    // 금지어(간단히/쉽게) 부재.
     expect(screen.queryByText(/간단히|쉽게/)).toBeNull();
   });
 
   it('펼침 토글 터치 타깃 44px 이상', () => {
-    render(<PolicyResultCard item={item()} status="now" />);
+    render(<PolicyResultCard item={item({ documentsText: DOCS_TEXT })} status="now" />);
     expect(toggle().className).toMatch(/min-h-\[44px\]/);
   });
 
   it('펼침 섹션이 신청 CTA·추정 고지보다 위에 배치(중복 배치 없음, DESIGN §4)', () => {
-    render(<PolicyResultCard item={item()} status="now" />);
+    render(<PolicyResultCard item={item({ documentsText: DOCS_TEXT })} status="now" />);
     fireEvent.click(toggle());
-    const roadmap = screen.getByTestId('apply-roadmap');
+    const box = screen.getByTestId('documents-excerpt');
     const actions = screen.getByTestId('policy-card-actions');
-    const pos = roadmap.compareDocumentPosition(actions);
-    // roadmap이 actions보다 먼저면 FOLLOWING 비트가 켜진다.
+    const pos = box.compareDocumentPosition(actions);
     expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // 원문 링크·추정 고지는 현행 1회 유지(펼침이 중복 생성하지 않음).
     expect(screen.getAllByRole('link')).toHaveLength(1);

@@ -19,12 +19,20 @@ export interface FreeTextInputProps {
   /** 전송 시 글 원문을 검색 질의로 전달(위기면 미호출). */
   onSubmit: (query: string) => void;
   placeholder?: string;
+  /**
+   * 렌더 형태(안전 로직 무관):
+   *  - 'hero'(기본): 홈 히어로 카드(여러 줄·라벨 노출·Shift+Enter 안내).
+   *  - 'compact': 결과 화면 한 줄 재검색 바(pill + 원형 검색 버튼·라벨 sr-only).
+   * ★위기 감지·전송 로직은 variant와 무관하게 동일 — 재검색에서도 위기 라우팅 불변(§7).
+   */
+  variant?: 'hero' | 'compact';
 }
 
 export function FreeTextInput({
   onCrisis,
   onSubmit,
   placeholder = '예) 자취 중인데 월세가 너무 부담돼요…',
+  variant = 'hero',
 }: FreeTextInputProps) {
   const [value, setValue] = useState('');
 
@@ -61,6 +69,54 @@ export function FreeTextInput({
 
   const canSubmit = value.trim().length > 0;
 
+  // ── compact: 결과 화면 재검색 바(한 줄 pill + 원형 검색 버튼). 로직은 hero와 완전 공유. ──
+  if (variant === 'compact') {
+    return (
+      <div
+        data-funnel-region="free-input"
+        className="flex items-center gap-2 rounded-full border border-[#F0E6D8] bg-white py-1.5 pl-[18px] pr-1.5 shadow-[0_10px_26px_-16px_rgba(160,90,50,.35),0_2px_6px_rgba(160,90,50,.05)]"
+      >
+        {/* 라벨은 시각적으로 숨기되 접근성 유지(sr-only) — label 연결 관용 유지. */}
+        <label htmlFor="free-text-input" className="sr-only">
+          지금 내 상황
+        </label>
+        <textarea
+          id="free-text-input"
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          rows={1}
+          className="min-w-0 flex-1 resize-none border-none bg-transparent p-0 text-[15px] leading-[1.7] text-ink-900 placeholder:text-[#B4A99A] focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!canSubmit}
+          aria-label="내 정책 찾기"
+          style={{ background: canSubmit ? 'linear-gradient(135deg,#D2703F,#B84A2C)' : undefined }}
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-[0_8px_18px_-6px_rgba(184,74,44,.6)] transition disabled:cursor-not-allowed disabled:bg-sand-400 disabled:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+        >
+          <svg
+            aria-hidden="true"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.4-3.4" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
+  // ── hero(기본): 홈 히어로 카드. 기존 형태 무변경. ──
   return (
     <div
       data-funnel-region="free-input"

@@ -1,5 +1,9 @@
 import seoulFixture from './__fixtures__/seoul-native.sample.json';
 import { isMentalHealthTitle } from '../domain/parse/mentalHealth';
+import { cleanDocumentsText } from '../domain/parse/documentsText';
+
+// 공용 SSOT 재노출(기존 소비자·테스트 호환) — 구현은 domain/parse/documentsText.ts.
+export { cleanDocumentsText };
 
 /**
  * 서울 청년몽땅정보통 클라이언트 — 받기(fetch)·파싱 격리 계층.
@@ -399,6 +403,8 @@ export function adaptSeoulItem(input: {
   );
   const orgName = field(fields, '주관기관', '운영기관');
   const policyType = field(fields, '정책유형');
+  // 제출서류 원문 발췌(F-⑤) — 노이즈 가드로 쓰레기값(화살표·대시만) 제거, 통과 시 원문 그대로.
+  const documentsText = cleanDocumentsText(field(fields, '제출서류', '구비서류', '신청서류'));
 
   const category = isMentalHealthTitle(title, policyType ?? '')
     ? '마음건강'
@@ -417,6 +423,7 @@ export function adaptSeoulItem(input: {
     recruitEndText: recruit.endText,
     recruitText: recruit.text,
     category,
+    documentsText,
     sourceUrl: seoulDetailUrl(key, baseUrl),
     orgName: orgName ?? '서울특별시',
     source: 'seoul-youth',

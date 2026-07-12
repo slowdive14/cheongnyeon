@@ -20,6 +20,7 @@ create table if not exists policies (
   region_text   text,
   is_nationwide boolean not null default false,
   recruit       jsonb not null,             -- RecruitWindow
+  documents_text text,                       -- 제출서류 원문 발췌(F-⑤, null=원문 미표기). 기존 DB엔 alter로 선추가됨.
   source_url    text,
   keywords      text[] not null default '{}',
   parsed        jsonb,                       -- ParseResult | null

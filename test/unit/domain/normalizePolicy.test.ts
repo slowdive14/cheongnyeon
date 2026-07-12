@@ -352,3 +352,25 @@ describe('normalizePolicy — S7 원문/신선도(시간·I/O 없음)', () => {
     expect(p.updatedAt).toBeUndefined();
   });
 });
+
+describe('normalizePolicy — S8 제출서류 원문(documentsText, 날조 0)', () => {
+  it('documentsText 원문 통과(trim, 내부 줄바꿈 보존)', () => {
+    const p = normalizePolicy({ id: 'x', title: 't', documentsText: '  주민등록등본 1부\n소득금액증명 1부  ' });
+    expect(p.documentsText).toBe('주민등록등본 1부\n소득금액증명 1부');
+  });
+
+  it('빈값/공백만 → null', () => {
+    expect(normalizePolicy({ id: 'x', title: 't', documentsText: '   ' }).documentsText).toBeNull();
+    expect(normalizePolicy({ id: 'x', title: 't', documentsText: '' }).documentsText).toBeNull();
+  });
+
+  it('필드 없음/비문자 → null(보수)', () => {
+    expect(normalizePolicy({ id: 'x', title: 't' }).documentsText).toBeNull();
+    expect(normalizePolicy({ id: 'x', title: 't', documentsText: 123 }).documentsText).toBeNull();
+  });
+
+  it('비객체 입력(safeDefault) → documentsText null', () => {
+    expect(normalizePolicy(null).documentsText).toBeNull();
+    expect(normalizePolicy('문자열').documentsText).toBeNull();
+  });
+});

@@ -121,6 +121,32 @@ describe('Test 5.1 — 깔때기 통합 (경로 A journey)', () => {
     expect(main.className).toMatch(/lg:max-w-5xl/);
   });
 
+  it('A3 홈·결과 외곽 셸 폭 기준선 동일(max-w-[420px] lg:max-w-5xl) — 전환 무점프(DESIGN §3.1)', async () => {
+    renderFunnel();
+    // 홈(초기) 외곽 셸: 데스크톱 기준선을 결과와 통일해 배경·모서리 무점프.
+    const homeMain = document.querySelector('main')!;
+    expect(homeMain.className).toMatch(/max-w-\[420px\]/);
+    expect(homeMain.className).toMatch(/lg:max-w-5xl/);
+    // 결과 화면 외곽 셸도 같은 폭 기준선.
+    await journeyToBurnoutResult();
+    await screen.findAllByTestId('policy-result-card');
+    const resultMain = document.querySelector('main')!;
+    expect(resultMain.className).toMatch(/max-w-\[420px\]/);
+    expect(resultMain.className).toMatch(/lg:max-w-5xl/);
+  });
+
+  it('A4 결과 화면 재검색 = compact 한 줄 바(위기 라우팅 회귀 포함)', async () => {
+    renderFunnel();
+    await journeyToBurnoutResult();
+    await screen.findAllByTestId('policy-result-card');
+    // 결과 화면에서도 자유입력이 유지되고(compact) 위기어 입력 시 SafetyBanner 우선.
+    const box = screen.getByRole('textbox', { name: /상황/ });
+    fireEvent.change(box, { target: { value: '죽고 싶어요' } });
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByTestId('policy-result-card')).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
   it("B '추정' 고지 노출", async () => {
     renderFunnel();
     await journeyToBurnoutResult();

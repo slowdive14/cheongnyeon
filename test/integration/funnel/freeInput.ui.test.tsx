@@ -72,6 +72,49 @@ describe('FreeTextInput — UI 단위', () => {
     fireEvent.keyDown(box, { key: 'Enter' });
     expect(onSubmit).toHaveBeenCalledWith('우울해요');
   });
+
+  it('UI-H1 기본(hero) 무변경 — 라벨 노출·Shift+Enter 안내 유지', () => {
+    render(<FreeTextInput onCrisis={() => {}} onSubmit={() => {}} />);
+    // hero 라벨은 시각 노출(sr-only 아님).
+    expect(screen.getByText('지금 내 상황').className).not.toMatch(/sr-only/);
+    // hero엔 여러 줄 안내 문구 유지.
+    expect(screen.getByText(/Shift\+Enter/)).toBeInTheDocument();
+  });
+});
+
+describe('FreeTextInput — compact variant (결과 화면 재검색 바)', () => {
+  it('UI-C1 compact 한 줄 입력 + 접근 가능한 라벨 + 전송 동작', () => {
+    const onSubmit = vi.fn();
+    render(<FreeTextInput variant="compact" onCrisis={() => {}} onSubmit={onSubmit} />);
+    // 라벨은 sr-only(시각 숨김·접근성 유지) — 이름으로 여전히 찾힌다.
+    const box = screen.getByRole('textbox', { name: /상황/ });
+    expect(box).toBeInTheDocument();
+    expect(screen.getByText('지금 내 상황').className).toMatch(/sr-only/);
+    // compact엔 Shift+Enter 안내 문구 생략.
+    expect(screen.queryByText(/Shift\+Enter/)).toBeNull();
+    fireEvent.change(box, { target: { value: '월세 지원 받고 싶어' } });
+    fireEvent.click(screen.getByRole('button', { name: '내 정책 찾기' }));
+    expect(onSubmit).toHaveBeenCalledWith('월세 지원 받고 싶어');
+  });
+
+  it('UI-C2 compact 위기어 입력 → onCrisis(true)·onSubmit 억제 (위기 라우팅 회귀)', () => {
+    const onCrisis = vi.fn();
+    const onSubmit = vi.fn();
+    render(<FreeTextInput variant="compact" onCrisis={onCrisis} onSubmit={onSubmit} />);
+    fireEvent.change(screen.getByRole('textbox', { name: /상황/ }), { target: { value: '죽고 싶어요' } });
+    expect(onCrisis).toHaveBeenCalledWith(true);
+    fireEvent.click(screen.getByRole('button', { name: '내 정책 찾기' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('UI-C3 compact Enter → 전송(회귀)', () => {
+    const onSubmit = vi.fn();
+    render(<FreeTextInput variant="compact" onCrisis={() => {}} onSubmit={onSubmit} />);
+    const box = screen.getByRole('textbox', { name: /상황/ });
+    fireEvent.change(box, { target: { value: '자취 월세' } });
+    fireEvent.keyDown(box, { key: 'Enter' });
+    expect(onSubmit).toHaveBeenCalledWith('자취 월세');
+  });
 });
 
 describe('FunnelContainer + 자유입력 통합', () => {

@@ -138,6 +138,25 @@ describe('adaptOntongItem (실 항목 → raw 스키마)', () => {
     expect(r.category).toBe('일자리');
   });
 
+  it('제출서류(sbmsnDcmntCn) → documentsText 원문 통과(F-⑤)', () => {
+    const r = adaptOntongItem({ ...REAL, sbmsnDcmntCn: '  주민등록등본 1부, 개인정보 제공 동의서  ' });
+    // 원문 그대로(외곽 trim은 normalizePolicy가, 어댑터는 통과). 빈 값이면 undefined(섹션 미노출).
+    expect(r.documentsText).toBe('주민등록등본 1부, 개인정보 제공 동의서');
+  });
+
+  it('제출서류 필드 없음/빈값 → documentsText undefined(섹션 미노출)', () => {
+    expect(adaptOntongItem(REAL).documentsText).toBeUndefined();
+    expect(adaptOntongItem({ ...REAL, sbmsnDcmntCn: '   ' }).documentsText).toBeUndefined();
+  });
+
+  it('무정보 상용구("붙임파일 확인") → documentsText undefined (실측 다수 — 전 카드 동일 문구 방지)', () => {
+    const r = adaptOntongItem({
+      ...REAL,
+      sbmsnDcmntCn: '☞ 자세한 내용은 붙임파일을 확인해주시기 바랍니다',
+    });
+    expect(r.documentsText).toBeUndefined();
+  });
+
   it('범용 키워드(맞춤형상담서비스)만으론 마음건강 오분류 안 함', () => {
     const r = adaptOntongItem({
       plcyNo: 'Y',

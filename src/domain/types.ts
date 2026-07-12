@@ -59,6 +59,11 @@ export interface Policy {
   isNationwide: boolean;
   recruit: RecruitWindow;
   category: string | null;
+  /**
+   * 제출서류 원문 발췌(가공·요약·날조 0). 원문에 제출서류 표기가 없으면 null.
+   * UI는 이 값이 있을 때만 펼침을 노출하고, 원문 문자 그대로 발췌한다(F-⑤).
+   */
+  documentsText: string | null;
   /** 원문 링크. 없으면 null. */
   sourceUrl: string | null;
   /** 출처 라벨(ontong/mongttang 등). */

@@ -16,6 +16,7 @@ function cp(over: Partial<CachedPolicy> = {}): CachedPolicy {
     regionText: '서울특별시',
     isNationwide: false,
     recruit: { kind: 'always', start: null, end: null },
+    documentsText: '주민등록등본 1부',
     sourceUrl: 'https://x/p1',
     keywords: ['월세', '주거'],
     parsed: null,
@@ -41,6 +42,7 @@ describe('supabaseMapping', () => {
     expect(r.is_nationwide).toBe(false);
     expect(r.source_url).toBe('https://x/p1');
     expect(r.embedding).toBe('[0.1,0.2,0.3]'); // pgvector 텍스트 리터럴
+    expect(r.documents_text).toBe('주민등록등본 1부');
     expect(r.content_hash).toBe('h');
   });
 
@@ -63,5 +65,6 @@ describe('supabaseMapping', () => {
     expect(back.keywords).toEqual([]);
     expect(back.vector).toBeNull();
     expect(back.explanation).toBeNull();
+    expect(back.documentsText).toBeNull(); // 컬럼 없음 → null(보수)
   });
 });

@@ -109,16 +109,18 @@ export function FunnelContainer({
     WebkitTextFillColor: 'transparent',
   };
 
-  // 반응형(DESIGN §3.1): 결과 카드가 실제로 뜰 때만 데스크톱 셸을 넓혀 2열 그리드 수용.
-  // 모바일 폭·홈 화면은 현행 max-w-[420px] 유지.
-  // 넓은 셸에서 상단(헤드라인·검색창)·그리드·하단(동행·위기 푸터)은 전부 같은 폭 — 구획별
-  // 너비가 제각각이면 좌우 모서리가 어긋나 어수선하다(2026-07-10 사용자 피드백으로 중앙 좁힘 레일 제거).
+  // 반응형(DESIGN §3.1): 외곽 셸 폭 기준선을 홈·결과 공통(max-w-[420px] lg:max-w-5xl)으로 통일.
+  // 외곽 프레임이 화면 전환에도 리사이즈되지 않아 배경·좌우 모서리가 튀지 않는다
+  // (2026-07-11 사용자 피드백: "검색창이 결과 뜨고 갑자기 확 넓어져 이상"). 시각 폭 차이는
+  // 아래 innerWidth(내부 콘텐츠 래퍼)로만 만든다.
+  //  - 결과 카드 노출(wideShell): 데스크톱 전폭(5xl) 사용 → 2열 그리드 수용.
+  //  - 홈·빈결과: 데스크톱에서 내부를 lg:max-w-[420px] 중앙 고정(시각 결과는 기존 홈과 동일).
   const wideShell = showResultHeader;
-  const shellWidth = wideShell ? 'max-w-[420px] lg:max-w-5xl' : 'max-w-[420px]';
+  const innerWidth = wideShell ? '' : 'lg:mx-auto lg:max-w-[420px]';
 
   return (
-    <main className={`mx-auto min-h-screen w-full ${shellWidth} px-5 pb-8 pt-[22px] text-ink-900`}>
-     <div>
+    <main className="mx-auto min-h-screen w-full max-w-[420px] px-5 pb-8 pt-[22px] text-ink-900 lg:max-w-5xl">
+     <div className={innerWidth}>
       {/* 브랜드 바 (설정 기어 없음 — 키 UI 제거) */}
       <div data-funnel-region="header" className="mb-5 flex items-center gap-2.5">
         <div
@@ -167,9 +169,13 @@ export function FunnelContainer({
       </div>
 
       <div className="mb-6">
-        <FreeTextInput onCrisis={setFreeCrisis} onSubmit={setQuery} />
+        {/* 결과 화면(showResultHeader)에선 compact 재검색 바 — 홈은 hero 유지. 위기 로직 불변. */}
+        <FreeTextInput
+          variant={showResultHeader ? 'compact' : 'hero'}
+          onCrisis={setFreeCrisis}
+          onSubmit={setQuery}
+        />
       </div>
-     </div>
 
       {hasQuery ? (
         <section data-funnel-region="result-section" className="mb-6">
@@ -212,6 +218,7 @@ export function FunnelContainer({
       <div className="mt-3.5">
         <SavedPolicies items={savedApi.items} onRemove={savedApi.remove} />
       </div>
+     </div>
      </div>
     </main>
   );

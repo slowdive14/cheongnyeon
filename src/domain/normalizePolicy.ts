@@ -35,6 +35,8 @@ export function normalizePolicy(raw: unknown): Policy {
     ...parseRegion(r),
     recruit: parseRecruit(r),
     category: asNonEmptyString(r.category) ?? null,
+    // 제출서류 원문 통과(trim, 빈값→null). 가공하지 않는다(원문 그대로 보존).
+    documentsText: asNonEmptyString(r.documentsText),
     sourceUrl: asNonEmptyString(r.sourceUrl) ?? null,
     source: asNonEmptyString(r.source) ?? 'unknown',
     raw,
@@ -55,6 +57,7 @@ function safeDefault(raw: unknown): Policy {
     isNationwide: false,
     recruit: { kind: 'unknown', start: null, end: null },
     category: null,
+    documentsText: null,
     sourceUrl: null,
     source: 'unknown',
     raw,

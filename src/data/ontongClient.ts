@@ -2,6 +2,7 @@ import page1 from './__fixtures__/ontong-policies.page1.sample.json';
 import page2 from './__fixtures__/ontong-policies.page2.sample.json';
 import { sidoNameByPrefix } from '../domain/parse/sido';
 import { isMentalHealthTitle } from '../domain/parse/mentalHealth';
+import { cleanDocumentsText } from '../domain/parse/documentsText';
 
 /**
  * 온통청년 클라이언트. 받기(fetch) 격리 계층.
@@ -220,6 +221,12 @@ export function adaptOntongItem(raw: unknown): Record<string, unknown> {
 
   const lastModified = str(o.lastMdfcnDt).slice(0, 10) || undefined; // "YYYY-MM-DD"
 
+  // 제출서류(F-⑤): getPlcy 제출서류내용(sbmsnDcmntCn) → 공용 노이즈 가드(cleanDocumentsText).
+  //  실측(2026-07-11, 300건): 채움 72%인데 다수가 "☞ 자세한 내용은 붙임파일을 확인해주시기
+  //  바랍니다" 무정보 상용구 — 가드가 null 처리(→ 카드 섹션 미노출, 전 카드 동일 문구 방지).
+  //  통과분은 원문 문자 그대로(가공·요약·날조 금지).
+  const documentsText = cleanDocumentsText(str(o.sbmsnDcmntCn)) ?? undefined;
+
   return {
     id: str(o.plcyNo).trim() || undefined,
     title: str(o.plcyNm).trim() || undefined,
@@ -232,6 +239,7 @@ export function adaptOntongItem(raw: unknown): Record<string, unknown> {
     recruitEndText,
     recruitText,
     category,
+    documentsText,
     sourceUrl,
     orgName: inst || regionText,
     lastModified,

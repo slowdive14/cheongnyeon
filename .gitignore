@@ -17,3 +17,6 @@ coverage-report.json
 !.env.example
 
 .vercel
+
+# supabase CLI 로컬 산출물(link 시 생성)
+supabase/.temp/
