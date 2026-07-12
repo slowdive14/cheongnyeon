@@ -298,12 +298,46 @@ describe('F-⑤ 제출 서류 원문 발췌 펼침(동행)', () => {
     expect(box).toHaveTextContent(/원문에서 확인/);
   });
 
-  it('원문 발췌는 whitespace-pre-wrap으로 줄바꿈 보존', () => {
+  it('여러 줄 발췌는 세그먼트로 줄 분리 렌더(글자 보존) — 단일 blob 아님', () => {
     render(<PolicyResultCard item={item({ documentsText: DOCS_TEXT })} status="now" />);
+    fireEvent.click(toggle());
+    const list = screen.getByTestId('documents-excerpt-list');
+    // 세 줄이 각각 분리 렌더(가독성) — 원문 글자는 그대로.
+    expect(list).toHaveTextContent('주민등록등본 1부');
+    expect(list).toHaveTextContent('소득금액증명 1부');
+    expect(list).toHaveTextContent('(해당자에 한함) 재직증명서');
+    // 단일 문단(documents-excerpt-raw)로 뭉치지 않음.
+    expect(screen.queryByTestId('documents-excerpt-raw')).toBeNull();
+  });
+
+  it('번호 항목 발췌 → item 줄마다 분리 + 숫자 강조(font-semibold)', () => {
+    const numbered = '1. 주민등록등본 1부 2. 소득금액증명 1부 3. 통장사본 1부';
+    render(<PolicyResultCard item={item({ documentsText: numbered })} status="now" />);
+    fireEvent.click(toggle());
+    const items = screen.getAllByTestId('doc-seg-item');
+    expect(items).toHaveLength(3);
+    // 원문 글자 그대로(가공 금지) + 숫자 부분 강조.
+    expect(items[0]).toHaveTextContent('1. 주민등록등본 1부');
+    const strong = items[0].querySelector('.font-semibold');
+    expect(strong?.textContent).toBe('1.');
+  });
+
+  it('주석(*·※) 발췌 → note 스타일(작은 뮤트 sand) 세그먼트로 렌더', () => {
+    const withNote = '1. 주민등록등본 1부 ※ 최근 1개월 이내 발급분만 인정';
+    render(<PolicyResultCard item={item({ documentsText: withNote })} status="now" />);
+    fireEvent.click(toggle());
+    const note = screen.getByTestId('doc-seg-note');
+    expect(note).toHaveTextContent('※ 최근 1개월 이내 발급분만 인정');
+    expect(note.className).toMatch(/text-sand-500/);
+  });
+
+  it('구조 표지 없는 단일 발췌는 현행처럼 문단 하나(whitespace-pre-wrap)', () => {
+    render(<PolicyResultCard item={item({ documentsText: '주민등록등본 1부' })} status="now" />);
     fireEvent.click(toggle());
     const raw = screen.getByTestId('documents-excerpt-raw');
     expect(raw.className).toMatch(/whitespace-pre-wrap/);
-    expect(raw.textContent).toBe(DOCS_TEXT);
+    expect(raw).toHaveTextContent('주민등록등본 1부');
+    expect(screen.queryByTestId('documents-excerpt-list')).toBeNull();
   });
 
   it('서류 사전 — 발췌문에 이름이 등장하는 서류만 발급처 안내(등본·소득금액증명)', () => {

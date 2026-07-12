@@ -24,6 +24,14 @@ describe('cleanDocumentsText', () => {
     expect(cleanDocumentsText('해당 사항 없음')).toBeNull();
     expect(cleanDocumentsText('※ 별도 공지')).toBeNull();
     expect(cleanDocumentsText('추후 안내')).toBeNull();
+    // "미정"만 저장된 실데이터(DB 976건 조사) — 정보 0이라 펼침 미노출.
+    expect(cleanDocumentsText('미정')).toBeNull();
+    expect(cleanDocumentsText('※ 미정')).toBeNull();
+  });
+
+  it('"미정"이 부분 문자열인 유효 원문은 과차단하지 않음(완전 일치만)', () => {
+    // "미정"이 다른 단어의 일부이거나 실제 서류가 함께 있으면 통과(보수).
+    expect(cleanDocumentsText('제출서류 미정, 신청서 1부')).toBe('제출서류 미정, 신청서 1부');
   });
 
   it('무정보 상용구("붙임파일 확인") → null (온통 실측 다수 — 전 카드 동일 문구 방지)', () => {

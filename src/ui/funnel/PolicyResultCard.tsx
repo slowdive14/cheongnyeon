@@ -19,6 +19,7 @@ import { explainMatch, type GroundingRecord } from '@/llm/explain';
 import { buildChecklist } from './policyChecklist';
 import { DOCUMENTS, type DocumentInfo } from '@/data/static/documents';
 import { DisclaimerNote } from './DisclaimerNote';
+import { formatDocumentsText, type DocSegment } from './formatDocumentsText';
 
 /**
  * 결과 카드 — 지금/곧/확인필요 3상태 + "나와 맞는 점" 체크리스트 + 원문 링크 + '추정' 고지 + 최종 업데이트.
@@ -168,6 +169,50 @@ function minutesText(min: number | null): string | null {
   return min === null ? null : `약 ${min}분`;
 }
 
+/**
+ * 제출서류 발췌 세그먼트 한 줄 렌더 — 표시 정리만(글자 불변).
+ *  - item : 줄당 하나 + 숫자(아라비아/원문자) 부분만 font-semibold 강조. 텍스트는 원문 그대로.
+ *  - note : 작은 글씨·뮤트(sand) — 부연·주석.
+ *  - header : 섹션 표제 살짝 강조(font-semibold).
+ *  - text : 보통 문단(줄바꿈 보존).
+ */
+function DocSegmentLine({ seg }: { seg: DocSegment }) {
+  if (seg.type === 'item') {
+    const m = seg.text.match(/^([0-9]{1,2}\.|[①-⑳])([\s\S]*)$/);
+    return (
+      <p data-testid="doc-seg-item" className="text-[13px] leading-relaxed text-clay-700">
+        {m ? (
+          <>
+            <span className="font-semibold">{m[1]}</span>
+            {m[2]}
+          </>
+        ) : (
+          seg.text
+        )}
+      </p>
+    );
+  }
+  if (seg.type === 'note') {
+    return (
+      <p data-testid="doc-seg-note" className="text-[12.5px] leading-relaxed text-sand-500">
+        {seg.text}
+      </p>
+    );
+  }
+  if (seg.type === 'header') {
+    return (
+      <p data-testid="doc-seg-header" className="text-[13px] font-semibold leading-relaxed text-clay-700">
+        {seg.text}
+      </p>
+    );
+  }
+  return (
+    <p data-testid="doc-seg-text" className="whitespace-pre-wrap text-[13px] leading-relaxed text-clay-700">
+      {seg.text}
+    </p>
+  );
+}
+
 export function PolicyResultCard({ item, status, profile, saved, onToggleSave }: PolicyResultCardProps) {
   const policy = item.policy;
   const title =
@@ -201,6 +246,9 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
   const documentsText = typeof docsRaw === 'string' && docsRaw.trim().length > 0 ? docsRaw : null;
   // 발췌문에 이름이 등장하는 서류만 발급처 안내(미등장 서류는 붙이지 않음).
   const docGuide = documentsText ? matchedDocuments(documentsText) : [];
+  // 표시 정리(줄 분리)만 — 글자 불변(formatDocumentsText). 세그먼트 1개면 현행 문단 하나로 폴백.
+  const docSegments = useMemo(() => formatDocumentsText(documentsText), [documentsText]);
+  const docSingle = docSegments.length <= 1;
 
   // F-⑤ 신청 준비 펼침 — 카드 로컬 상태(전역 저장 불필요). 기본 접힘.
   const [expanded, setExpanded] = useState(false);
@@ -276,15 +324,24 @@ export function PolicyResultCard({ item, status, profile, saved, onToggleSave }:
 
           {expanded ? (
             <div data-testid="documents-excerpt" className="mt-2 space-y-3">
-              {/* 제출 서류 — 정책 원문 발췌만(가공·요약·날조 금지, 원문 줄바꿈 보존). */}
+              {/* 제출 서류 — 정책 원문 발췌만(가공·요약·날조 금지). 표시 정리(줄 분리)는 허용, 글자 불변.
+                  세그먼트 1개면 현행처럼 문단 하나(whitespace-pre-wrap), 여러 개면 줄 분리 렌더. */}
               <div className="rounded-[14px] bg-clay-50 p-3">
                 <p className="text-[13px] font-bold text-clay-700">제출 서류 (원문 그대로)</p>
-                <p
-                  data-testid="documents-excerpt-raw"
-                  className="mt-1.5 whitespace-pre-wrap text-[13px] leading-relaxed text-clay-700"
-                >
-                  {documentsText}
-                </p>
+                {docSingle ? (
+                  <p
+                    data-testid="documents-excerpt-raw"
+                    className="mt-1.5 whitespace-pre-wrap text-[13px] leading-relaxed text-clay-700"
+                  >
+                    {docSegments[0]?.text ?? documentsText}
+                  </p>
+                ) : (
+                  <div data-testid="documents-excerpt-list" className="mt-1.5 space-y-1">
+                    {docSegments.map((seg, i) => (
+                      <DocSegmentLine key={i} seg={seg} />
+                    ))}
+                  </div>
+                )}
                 <p className="mt-2 text-xs leading-relaxed text-clay-700/80">
                   제출 서류는 정책마다 달라요. 신청 전 반드시 원문에서 확인해요
                 </p>

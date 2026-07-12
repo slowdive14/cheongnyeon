@@ -20,8 +20,9 @@ export function cleanDocumentsText(text: string | undefined | null): string | nu
   if (!hangul || hangul.length < 2) return null;
 
   // 2) 저정보 토큰(기호·공백 제거 후 완전 일치만 — 부분 포함은 유지).
+  //    "미정"은 실데이터(DB 976건)에서 documents_text로 저장된 케이스 — 정보 0이라 미노출.
   const compact = t.replace(/[\s☞→▶►※·.\-~()]/g, '');
-  if (/^(해당없음|없음|해당사항없음|별도공지|추후공지|추후안내)$/.test(compact)) return null;
+  if (/^(해당없음|없음|해당사항없음|별도공지|추후공지|추후안내|미정)$/.test(compact)) return null;
 
   // 3) 무정보 상용구: 붙임/첨부 안내뿐이고 서류 명사가 전혀 없으며 짧은 문구.
   const mentionsAttachment = /(붙임|첨부)\s*(파일|문서)?/.test(t) && /(확인|참고|바랍니다)/.test(t);
