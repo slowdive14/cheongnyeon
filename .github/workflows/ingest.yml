@@ -45,13 +45,15 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           INGEST_CONCURRENCY: '12'
-          # 서울 청년몽땅 합류(Phase B) — 활성화됨(운영자 결정 2026-07-04).
-          #   안전장치: (1) ✅ 교차출처 중복/상충 억제(M-1, suppressCrossSourceDuplicates),
-          #            (2) ✅ 출처 표기 분기(H-1, originLabel).
-          #   ⚠️ 미해결: 청년몽땅 이용약관(제12조③·제13조 — 배포·제3자 제공·가공 시 서울시 명시적 승인 필요)
-          #      대비 라이선스 승인 미취득. 운영자가 리스크 인지·수용하고 사전 활성화(승인 요청은 후속).
-          #      승인 불발·거부 시 이 줄을 다시 주석 처리하고 서울 데이터 purge 필요. 근거: _workspace/40_B0_recon.md §4.
-          SEOUL_INGEST: 'on'
+          # 서울 청년몽땅 합류(Phase B) — ⛔ 일시 비활성(운영자 결정 2026-07-13).
+          #   사유: 청년몽땅 이용약관(제12조③·제13조 — 배포·제3자 제공·가공 시 서울시 명시적 승인 필요)
+          #        상 라이선스 승인 미취득. 공개 제출/서비스 전까지 서울분 제외.
+          #   조치: (1) 수집 중단(아래 SEOUL_INGEST=''), (2) 기존 서울 데이터 310건 DB purge 완료(2026-07-13).
+          #        → 서비스는 온통청년 전량(2,651건)만 노출.
+          #   ♻️ 재개방(서울시 승인 후): 아래 값을 'on'으로 바꾸고 workflow_dispatch로 1회 수동 실행하면
+          #        seoulClient가 다시 크롤·적재. 코드(seoulClient·정규화)는 그대로 보존되어 있어 즉시 복구 가능.
+          #   근거: _workspace/40_B0_recon.md §4.
+          SEOUL_INGEST: '' # ''=off(비활성) · 'on'=재개방. 승인 취득 전까지 off 유지.
           # 혜택 한 줄(D-②) 전체 재생성 — 수동 실행에서 force_explain=true일 때만 'on'. 정기(cron)은 항상 off.
           INGEST_FORCE_EXPLAIN: ${{ inputs.force_explain && 'on' || '' }}
         run: |
