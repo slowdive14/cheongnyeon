@@ -257,6 +257,24 @@ describe('Test 5.1 — 깔때기 통합 (경로 A journey)', () => {
     });
   });
 
+  it('T-E4b 연도 변형 중복 → 헤드라인 N = 접힌 뒤 실제 카드 수(헛개수 방지)', async () => {
+    // 스크린샷 버그 재현: 같은 사업의 작년/올해판 2개가 결과에 들어오면 dedupe로 1개만 렌더되는데,
+    // 헤드라인은 dedupe 전 원본을 세어 "3개"라 표기 → 실제 카드 2개와 불일치.
+    const yvIndex: IndexedDoc[] = [
+      doc('취업희망프로그램 2025', '심리상담', '마음건강', ['지치고무기력', '심리상담']),
+      doc('취업희망프로그램 2026', '마음투자', '마음건강', ['지치고무기력', '마음투자']),
+      doc('전국민 마음투자 바우처', '마음투자', '마음건강', ['지치고무기력', '마음투자']),
+    ];
+    renderFunnel({ index: yvIndex, policies: yvIndex.map((d) => policyFor(d.policyId)) });
+    await journeyToBurnoutResult();
+    const cards = await screen.findAllByTestId('policy-result-card');
+    // '취업희망프로그램' 2025/2026 → 한 그룹으로 접힘 → 실제 카드 2개(취업희망 대표 1 + 마음투자 1).
+    expect(cards.length).toBe(2);
+    const headline = screen.getByRole('heading', { level: 1 }).textContent ?? '';
+    const n = Number(headline.match(/딱 맞는 정책 (\d+)개/)?.[1]);
+    expect(n).toBe(cards.length); // 헤드라인 N == 렌더 카드 수(dedupe 후)
+  });
+
   it('T-E4 빈 결과(카드 0) → 헤드라인 미표시 + "이런 쪽은 어때요?"', async () => {
     // 매칭 0(index·policies 모두 비움) → 노출 카드 0 → 대안 유도.
     renderFunnel({ policies: [], index: [] });

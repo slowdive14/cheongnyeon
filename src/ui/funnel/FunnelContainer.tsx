@@ -7,6 +7,7 @@ import type { LlmClient } from '@/data/parseChunk';
 import { safetyResources } from '@/domain/safetyResources';
 import { SafetyBanner } from './SafetyBanner';
 import { ResultList } from './ResultList';
+import { dedupeYearVariants } from './dedupeYearVariants';
 import { ChoiceChips } from './ChoiceChips';
 import { FreeTextInput } from './FreeTextInput';
 import { ProfileInput } from './ProfileInput';
@@ -111,9 +112,12 @@ export function FunnelContainer({
 
   const hasQuery = query.trim().length > 0;
 
-  // 헤드라인 N = 실제 노출 카드 수(now+soon+review 합, blocked 제외 — 헛개수 금지, R-E2).
+  // 헤드라인 N = 실제 노출 카드 수. ResultList와 동일하게 연도 변형 dedupe 후 센다 —
+  // 원본(dedupe 전)을 세면 "N개 찾았어요"가 실제 카드 수보다 커지는 헛개수 발생(R-E2).
+  // dedupeYearVariants는 결정적·멱등이라 ResultList가 한 번 더 접어도 결과 동일.
   const r = funnel.result;
-  const showable = (r?.now.length ?? 0) + (r?.soon.length ?? 0) + (r?.review.length ?? 0);
+  const dedupedResult = dedupeYearVariants({ now: r?.now ?? [], soon: r?.soon ?? [], review: r?.review ?? [] });
+  const showable = dedupedResult.now.length + dedupedResult.soon.length + dedupedResult.review.length;
   // 결과 헤드라인·맞춤 배지: 검색 완료 + 노출 카드 있을 때만(로딩·빈결과는 각기 담당).
   const showResultHeader = hasQuery && !funnel.loading && showable > 0;
   const regionName = profile?.regionCode ? sidoNameByPrefix(profile.regionCode) ?? null : null;
