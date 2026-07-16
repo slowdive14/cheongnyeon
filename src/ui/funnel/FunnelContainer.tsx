@@ -20,8 +20,9 @@ import { useSavedPolicies } from './savedPoliciesStore';
  * 깔때기 조립 — 자유입력 1차 관문(글→질의→정책 직접 노출). 칩은 예시 quick-start(질의 채움).
  *
  * ★렌더 불변식(안전):
- *  1) 위기(traverse crisis OR 자유입력 실시간 layer-1) → <SafetyBanner/>만, DOM 최상단.
- *     입력/결과/예시/설정 일절 미렌더(위기 최우선).
+ *  1) 위기(traverse crisis OR 자유입력 실시간 layer-1) → <SafetyBanner/> 최우선·DOM 최상단.
+ *     입력/결과/예시/프로필/동행 일절 미렌더(위기 최우선). 단 배너 하단에 절제된
+ *     '정책 검색으로 돌아가기' 링크 1개만 허용(막다른 길 방지 — data-funnel-region 없음, DESIGN §7.1).
  *  2) 질의 있음 → 결과(ResultList: now/soon/review, blocked 미노출). 질의 없음 → 입력 + 예시 칩.
  *  3) 예시 칩(엔트리 갈래)·대안 칩 클릭 → 해당 라벨을 질의로 채워 같은 검색 흐름 실행(별도 funnel 네비 없음).
  *  4) '추정' 고지·원문 링크·위기 안내 푸터는 결과 카드/섹션이 담당.
@@ -82,11 +83,28 @@ export function FunnelContainer({
     [examples],
   );
 
-  // ★위기 시: 배너만, DOM 최상단. 입력·결과·예시·설정 일절 미렌더.
+  // 위기 화면 복귀 링크 → 실시간 위기·제출 질의를 모두 해제해 홈(자유입력·예시)으로 돌아간다.
+  // 위기 분기에서 자유입력이 언마운트돼 재트리거 루프 없음(홈 재렌더 시 빈 입력).
+  const returnToSearch = useCallback(() => {
+    setFreeCrisis(false);
+    setQuery('');
+  }, []);
+
+  // ★위기 시: 배너 최우선·단독(정책·입력·결과·예시·프로필·동행 미렌더). 단 막다른 길이 되지 않게
+  //  배너 하단에 절제된 복귀 링크 1개만 허용(입력·정책 콘텐츠 아님, data-funnel-region 없음 — DESIGN §7.1).
   if (inCrisis) {
     return (
       <main className="mx-auto min-h-screen w-full max-w-xl space-y-5 bg-cream-50 px-4 py-6 text-ink-900 sm:px-6">
         <SafetyBanner resources={resources} />
+        <div className="pt-1 text-center">
+          <button
+            type="button"
+            onClick={returnToSearch}
+            className="inline-flex min-h-[44px] items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-sand-600 underline decoration-sand-400 underline-offset-4 transition hover:text-clay-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+          >
+            마음이 좀 괜찮아지면, 정책 검색으로 돌아갈게요
+          </button>
+        </div>
       </main>
     );
   }

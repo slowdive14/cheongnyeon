@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { FunnelContainer } from '@/ui/funnel/FunnelContainer';
 import { mentalHealthGraph } from '@/domain/graph/domains/mentalHealth';
 import type { TraverseDeps, TraverseResult, TraverseState } from '@/domain/graph/traverse';
@@ -208,5 +208,27 @@ describe('Test 5.2 — 위기 화면', () => {
     );
     const banner = await screen.findByRole('alert');
     expect(banner).toBeInTheDocument();
+  });
+
+  it('F 위기 화면 복귀 링크 → 홈(예시)으로 돌아감(막다른 길 방지, 안전 §7.1)', async () => {
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={calmTraverse()}
+      />,
+    );
+    // 홈 자유입력에 위기 문구 → 실시간 layer-1 → 배너 노출
+    const box = await screen.findByLabelText('지금 내 상황');
+    fireEvent.change(box, { target: { value: '죽고 싶다' } });
+    await screen.findByRole('alert');
+    // 복귀 링크는 data-funnel-region이 없어 배너 단독 불변식(B2)을 깨지 않는다.
+    const back = screen.getByRole('button', { name: /정책 검색으로 돌아갈게요/ });
+    expect(back.getAttribute('data-funnel-region')).toBeNull();
+    // 클릭 → 배너 사라지고 홈(예시 칩) 복귀
+    fireEvent.click(back);
+    expect(screen.queryByRole('alert')).toBeNull();
+    await screen.findByTestId('choice-chips');
   });
 });
