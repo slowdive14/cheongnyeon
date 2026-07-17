@@ -31,7 +31,7 @@ export interface FreeTextInputProps {
 export function FreeTextInput({
   onCrisis,
   onSubmit,
-  placeholder = '예) 자취 중인데 월세가 너무 부담돼요…',
+  placeholder = '예) 자취 중인데 월세가 부담돼…',
   variant = 'hero',
 }: FreeTextInputProps) {
   const [value, setValue] = useState('');

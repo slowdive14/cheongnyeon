@@ -143,8 +143,15 @@ export function FunnelContainer({
   return (
     <main className="mx-auto min-h-screen w-full max-w-[420px] px-5 pb-8 pt-[22px] text-ink-900 lg:max-w-5xl">
      <div className={innerWidth}>
-      {/* 브랜드 바 (설정 기어 없음 — 키 UI 제거) */}
-      <div data-funnel-region="header" className="mb-5 flex items-center gap-2.5">
+      {/* 브랜드 바 — 클릭 시 언제나 처음 화면으로(질의·위기 초기화). 설정 기어 없음. */}
+      <button
+        type="button"
+        onClick={returnToSearch}
+        title="처음 화면으로"
+        aria-label="청년정책 나침반 — 처음 화면으로"
+        data-funnel-region="header"
+        className="mb-5 -m-1 flex items-center gap-2.5 rounded-lg p-1 transition hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
+      >
         <div
           className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] shadow-[0_4px_10px_rgba(184,74,44,.28)]"
           style={{ background: 'linear-gradient(135deg,#D2703F,#B84A2C)' }}
@@ -153,7 +160,7 @@ export function FunnelContainer({
           <div className="h-[11px] w-[11px] rounded-full border-[2.5px] border-white" />
         </div>
         <span className="text-sm font-bold tracking-tight text-[#6E5C4E]">청년정책 나침반</span>
-      </div>
+      </button>
 
       {/* 인사(홈) / 결과 헤드라인(검색 결과) */}
       {showResultHeader ? (

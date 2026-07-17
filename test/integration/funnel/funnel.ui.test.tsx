@@ -258,6 +258,16 @@ describe('Test 5.1 — 깔때기 통합 (경로 A journey)', () => {
     });
   });
 
+  it('T-H1 상단 브랜드(청년정책 나침반) 클릭 → 언제나 처음 화면으로(질의 초기화)', async () => {
+    renderFunnel();
+    await journeyToBurnoutResult();
+    await screen.findAllByTestId('policy-result-card'); // 결과 화면 진입
+    // 상단 브랜드 클릭 → 홈(예시 칩) 복귀, 결과 카드 사라짐.
+    fireEvent.click(screen.getByRole('button', { name: /청년정책 나침반/ }));
+    await screen.findByTestId('choice-chips');
+    expect(screen.queryByTestId('policy-result-card')).toBeNull();
+  });
+
   it('T-E4b 연도 변형 중복 → 헤드라인 N = 접힌 뒤 실제 카드 수(헛개수 방지)', async () => {
     // 스크린샷 버그 재현: 같은 사업의 작년/올해판 2개가 결과에 들어오면 dedupe로 1개만 렌더되는데,
     // 헤드라인은 dedupe 전 원본을 세어 "3개"라 표기 → 실제 카드 2개와 불일치.
