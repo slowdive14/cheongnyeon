@@ -175,6 +175,7 @@ function synthesizePolicy(id: string, doc: IndexedDoc | null): Policy {
     category: doc?.category ?? null,
     sourceUrl: null,
     source: 'unknown',
+    documentsText: null,
   };
 }
 

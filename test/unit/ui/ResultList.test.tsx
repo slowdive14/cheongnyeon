@@ -19,6 +19,7 @@ function ev(id: string, status: EvaluatedPolicy['recruitStatus'], reasons: Evalu
     category: '마음건강',
     sourceUrl: 'https://example.com/' + id,
     source: 'ontong',
+    documentsText: null,
   } as Policy;
   return { policy, reasons, recruitStatus: status };
 }

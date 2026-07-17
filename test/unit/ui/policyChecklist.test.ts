@@ -22,6 +22,7 @@ function policy(over: Partial<Policy> = {}): Policy {
     category: null,
     sourceUrl: null,
     source: 'test',
+    documentsText: null,
     ...over,
   };
 }

@@ -28,6 +28,7 @@ function basePolicy(over: Partial<Policy> = {}): Policy {
     category: '주거',
     sourceUrl: 'https://example.com/ON-0001',
     source: 'ontong',
+    documentsText: null,
     raw: {},
     ...over,
   };

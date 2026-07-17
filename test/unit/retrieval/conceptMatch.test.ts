@@ -40,6 +40,7 @@ function cached(id: string, parsedResult: ParseResult | null, extra: Partial<Cac
     category: extra.category ?? '마음건강',
     sourceUrl: null,
     source: 'ontong',
+    documentsText: null,
     fetchedAt: '2026-06-24T00:00:00Z',
     updatedAt: '2026-06-24T00:00:00Z',
     contentHash: `h-${id}`,

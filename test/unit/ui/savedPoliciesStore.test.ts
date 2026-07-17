@@ -28,6 +28,7 @@ const P: Policy = {
   category: '복지.문화',
   sourceUrl: 'https://youth.seoul.go.kr/x',
   source: 'seoul-youth',
+  documentsText: null,
   raw: null,
 };
 

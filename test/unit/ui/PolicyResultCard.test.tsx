@@ -318,7 +318,7 @@ describe('F-⑤ 제출 서류 원문 발췌 펼침(동행)', () => {
     expect(items).toHaveLength(3);
     // 원문 글자 그대로(가공 금지) + 숫자 부분 강조.
     expect(items[0]).toHaveTextContent('1. 주민등록등본 1부');
-    const strong = items[0].querySelector('.font-semibold');
+    const strong = items[0]!.querySelector('.font-semibold');
     expect(strong?.textContent).toBe('1.');
   });
 

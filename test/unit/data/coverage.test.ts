@@ -27,6 +27,7 @@ function pol(over: Partial<Policy> & { title: string }): Policy {
     category: null,
     sourceUrl: null,
     source: 'ontong',
+    documentsText: null,
     raw: {},
   };
   return { ...base, ...over };

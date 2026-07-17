@@ -60,6 +60,7 @@ function policyFor(id: string, over: Partial<Policy> = {}): CachedPolicy {
     category: '마음건강',
     sourceUrl: 'https://example.com/' + id,
     source: 'ontong',
+    documentsText: null,
     fetchedAt: '2026-06-24T00:00:00Z',
     updatedAt: '2026-06-24T00:00:00Z',
     contentHash: 'h-' + id,
