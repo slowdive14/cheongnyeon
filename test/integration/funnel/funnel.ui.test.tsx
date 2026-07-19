@@ -136,15 +136,19 @@ describe('Test 5.1 — 깔때기 통합 (경로 A journey)', () => {
     expect(resultMain.className).toMatch(/lg:max-w-5xl/);
   });
 
-  it('A4 결과 화면 재검색 = compact 한 줄 바(위기 라우팅 회귀 포함)', async () => {
+  it('A4 결과 화면 재검색 compact 바 — 타이핑 위기 = 인라인 배너·카드 숨김, 전송 = 전체 전환', async () => {
     renderFunnel();
     await journeyToBurnoutResult();
     await screen.findAllByTestId('policy-result-card');
-    // 결과 화면에서도 자유입력이 유지되고(compact) 위기어 입력 시 SafetyBanner 우선.
+    // 결과 화면에서 위기어 타이핑 → 인라인 배너 + 정책 카드 즉시 숨김, 입력·글은 유지(§7.1a).
     const box = screen.getByRole('textbox', { name: /상황/ });
     fireEvent.change(box, { target: { value: '죽고 싶어요' } });
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.queryByTestId('policy-result-card')).toBeNull();
+    expect(screen.getByRole('textbox', { name: /상황/ })).toHaveValue('죽고 싶어요');
+    // 전송 시도 → 전체 위기 화면(입력 미노출, §7.1b).
+    fireEvent.keyDown(box, { key: 'Enter' });
+    await screen.findByRole('button', { name: /정책 검색으로 돌아갈게요/ });
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 

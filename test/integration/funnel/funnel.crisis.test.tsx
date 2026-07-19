@@ -210,7 +210,7 @@ describe('Test 5.2 — 위기 화면', () => {
     expect(banner).toBeInTheDocument();
   });
 
-  it('F 위기 화면 복귀 링크 → 홈(예시)으로 돌아감(막다른 길 방지, 안전 §7.1)', async () => {
+  it('F 위기 전송 → 전체 화면 → 복귀 링크 → 홈(막다른 길 방지, 안전 §7.1b)', async () => {
     render(
       <FunnelContainer
         graph={mentalHealthGraph}
@@ -219,16 +219,100 @@ describe('Test 5.2 — 위기 화면', () => {
         traverseFn={calmTraverse()}
       />,
     );
-    // 홈 자유입력에 위기 문구 → 실시간 layer-1 → 배너 노출
+    // 홈 자유입력에 위기 문구 → 실시간 layer-1 → 인라인 배너(작성 중 단계, 입력 유지)
     const box = await screen.findByLabelText('지금 내 상황');
     fireEvent.change(box, { target: { value: '죽고 싶다' } });
     await screen.findByRole('alert');
-    // 복귀 링크는 data-funnel-region이 없어 배너 단독 불변식(B2)을 깨지 않는다.
-    const back = screen.getByRole('button', { name: /정책 검색으로 돌아갈게요/ });
+    expect(screen.getByLabelText('지금 내 상황')).toHaveValue('죽고 싶다');
+    // 전송(Enter) → 전체 위기 화면(§7.1b): 복귀 링크 존재, 입력 미노출.
+    fireEvent.keyDown(box, { key: 'Enter' });
+    const back = await screen.findByRole('button', { name: /정책 검색으로 돌아갈게요/ });
     expect(back.getAttribute('data-funnel-region')).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
     // 클릭 → 배너 사라지고 홈(예시 칩) 복귀
     fireEvent.click(back);
     expect(screen.queryByRole('alert')).toBeNull();
     await screen.findByTestId('choice-chips');
+  });
+
+  // ── 작성 중 위기 2단계(승인안 ①, DESIGN §7.1a) — 타이핑 중엔 말 끊지 않기 ──
+
+  it('T-IC1 타이핑 위기 → 감지 즉시 인라인 배너 + 쓰던 글 그대로(언마운트 0)', async () => {
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={calmTraverse()}
+      />,
+    );
+    const box = await screen.findByLabelText('지금 내 상황');
+    fireEvent.change(box, { target: { value: '다 놓아버리고 싶어요' } });
+    // 같은 렌더 사이클에 배너(지연 0) — findBy 없이 동기 조회로 잠근다.
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByLabelText('지금 내 상황')).toHaveValue('다 놓아버리고 싶어요');
+  });
+
+  it('T-IC2 타이핑 위기 중 정책 표면 전부 미렌더(위기·정책 병렬 금지)', async () => {
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={calmTraverse()}
+      />,
+    );
+    const box = await screen.findByLabelText('지금 내 상황');
+    fireEvent.change(box, { target: { value: '죽고 싶다' } });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    // 인라인 배너 region 존재 + 정책 표면 0.
+    const main = screen.getByRole('alert').closest('main')!;
+    expect(main.querySelector('[data-funnel-region="safety-inline"]')).not.toBeNull();
+    expect(screen.queryByTestId('profile-pill')).toBeNull();
+    expect(screen.queryByTestId('choice-chips')).toBeNull();
+    expect(screen.queryByTestId('policy-result-card')).toBeNull();
+    expect(screen.queryByTestId('saved-policies')).toBeNull();
+    expect(screen.queryByTestId('youth-center-link')).toBeNull();
+    expect(screen.queryByTestId('crisis-footer')).toBeNull();
+    expect(main.querySelector('[data-funnel-region="results"]')).toBeNull();
+    expect(main.querySelector('[data-funnel-region="examples"]')).toBeNull();
+  });
+
+  it('T-IC3 위기 문구 삭제 → 인라인 배너 해제 + 예시 칩 복귀(자동)', async () => {
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={calmTraverse()}
+      />,
+    );
+    const box = await screen.findByLabelText('지금 내 상황');
+    fireEvent.change(box, { target: { value: '죽고 싶다' } });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    fireEvent.change(box, { target: { value: '요즘 조금 지쳐요' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+    await screen.findByTestId('choice-chips');
+  });
+
+  it('T-IC4 위기 상태 Enter → 검색 진입 0(traverse 추가 호출 없음) + 전체 위기 화면', async () => {
+    const tf = calmTraverse();
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={tf}
+      />,
+    );
+    const box = await screen.findByLabelText('지금 내 상황');
+    fireEvent.change(box, { target: { value: '죽고 싶다' } });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    const baseline = tf.mock.calls.length;
+    fireEvent.keyDown(box, { key: 'Enter' });
+    // 전체 위기 화면(복귀 링크) + 질의 미설정 → traverse 재호출 0(검색·생성 억제 불변).
+    await screen.findByRole('button', { name: /정책 검색으로 돌아갈게요/ });
+    expect(tf.mock.calls.length).toBe(baseline);
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 });

@@ -9,8 +9,9 @@ import type { UserProfile } from '@/domain/types';
 /**
  * 자유입력 1차 관문 UI 통합.
  *
- * 안전 불변식(엄수):
- *  - 위기어 입력 → 실시간 layer-1(키 무관) SafetyBanner 우선, 검색·생성 억제.
+ * 안전 불변식(엄수, DESIGN §7.1 2단계 — 2026-07-19 승인안 ①):
+ *  - 위기어 입력 → 실시간 layer-1(키 무관) 감지 즉시 인라인 배너(작성 중 단계, 입력·글 유지,
+ *    정책 콘텐츠 미렌더). 전송 시도 → 전체 위기 화면(SafetyBanner 단독). 검색·생성 억제는 두 단계 공통.
  *  - 전송(버튼/Enter) → 글 원문을 그대로 질의로(onSubmit). 분류 없음(의미검색이 의도 포착).
  *  - 초기 화면 = 자유입력 + 예시 칩(quick-start). 질의 있으면 결과 + M1 푸터.
  */
@@ -153,7 +154,7 @@ describe('FunnelContainer + 자유입력 통합', () => {
     expect(await screen.findByTestId('crisis-footer')).toBeInTheDocument();
   });
 
-  it('UI-2 통합: 자유입력 위기어 → SafetyBanner 우선(푸터·입력 억제)', async () => {
+  it('UI-2 통합: 자유입력 위기어 → 인라인 배너 즉시 + 입력·글 유지, 정책 콘텐츠 억제(§7.1a)', async () => {
     render(
       <FunnelContainer
         graph={mentalHealthGraph}
@@ -162,14 +163,18 @@ describe('FunnelContainer + 자유입력 통합', () => {
         traverseFn={calmResultTraverse()}
       />,
     );
-    fireEvent.change(await screen.findByRole('textbox', { name: /상황/ }), { target: { value: '자해하고 싶어' } });
+    const box = await screen.findByRole('textbox', { name: /상황/ });
+    fireEvent.change(box, { target: { value: '자해하고 싶어' } });
+    // 감지 즉시(같은 렌더) 인라인 배너 — 지연 0.
     expect(await screen.findByRole('alert')).toBeInTheDocument();
+    // 정책 콘텐츠 억제: 푸터·예시 칩 미렌더(번호는 인라인 배너가 담당, 중복 금지).
     expect(screen.queryByTestId('crisis-footer')).toBeNull();
-    // 위기 시 자유입력·프로필 입력(나이) textbox 모두 부재 → 전체 textbox 0.
-    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByTestId('choice-chips')).toBeNull();
+    // ★작성 중 단계: 입력은 유지되고 쓰던 글이 보존된다(말 끊지 않기 — 승인안 ①).
+    expect(screen.getByRole('textbox', { name: /상황/ })).toHaveValue('자해하고 싶어');
   });
 
-  it('UI-2b 완곡 위기 "버틸 힘이 없어" → SafetyBanner 우선·입력 억제 (H-1)', async () => {
+  it('UI-2b 완곡 위기 "버틸 힘이 없어" → 인라인 배너 + 입력·글 유지 (H-1·§7.1a)', async () => {
     render(
       <FunnelContainer
         graph={mentalHealthGraph}
@@ -182,7 +187,7 @@ describe('FunnelContainer + 자유입력 통합', () => {
       target: { value: '버틸 힘이 없어 정책 추천해줘' },
     });
     expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.getByRole('textbox', { name: /상황/ })).toHaveValue('버틸 힘이 없어 정책 추천해줘');
   });
 
   it('UI-9 설정 버튼·모달 없음(Gemini 키 UI 제거)', async () => {
@@ -192,7 +197,7 @@ describe('FunnelContainer + 자유입력 통합', () => {
     expect(screen.queryByTestId('settings-modal')).toBeNull();
   });
 
-  it('UI-10 자유입력 위기어 → SafetyBanner 단독(입력 미노출)', async () => {
+  it('UI-10 위기어 입력 후 전송(Enter) → 전체 위기 화면(SafetyBanner 단독, 입력 미노출 — §7.1b)', async () => {
     render(
       <FunnelContainer
         graph={mentalHealthGraph}
@@ -201,9 +206,13 @@ describe('FunnelContainer + 자유입력 통합', () => {
         traverseFn={calmResultTraverse()}
       />,
     );
-    fireEvent.change(await screen.findByRole('textbox', { name: /상황/ }), { target: { value: '죽고 싶어요' } });
+    const box = await screen.findByRole('textbox', { name: /상황/ });
+    fireEvent.change(box, { target: { value: '죽고 싶어요' } });
+    await screen.findByRole('alert'); // 작성 중 인라인 배너(입력 유지)
+    expect(screen.getByRole('textbox', { name: /상황/ })).toBeInTheDocument();
+    // 전송 시도 → 전체 위기 화면: 입력·설정 일절 미노출(검색 진입 0).
+    fireEvent.keyDown(box, { key: 'Enter' });
     await screen.findByRole('alert');
-    // 위기 단독 렌더: 입력·설정 미노출.
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByTestId('settings-modal')).toBeNull();
   });

@@ -158,16 +158,20 @@ describe('T7 — App이 profile 소유 + ProfileInput 역전파', () => {
 });
 
 describe('T-권고1 — Gemini 키 UI 제거 후 App 배선 위기 라우팅(layer-1 단독 바닥선)', () => {
-  it('키 없는 배선(crisisDeps anchors=[]) + 자유입력 위기어 → SafetyBanner 단독(입력·결과·프로필 미노출)', async () => {
+  it('키 없는 배선(crisisDeps anchors=[]) + 자유입력 위기어 → 인라인 배너(입력 유지) → 전송 시 단독 화면', async () => {
     render(<AppHarness />);
     const input = await screen.findByRole('textbox', { name: /상황/ });
     // layer-2(의미 앵커)는 꺼진 상태(anchors=[]). layer-1 정규식(키 무관)이 단독으로 위기 감지.
     fireEvent.change(input, { target: { value: '죽고 싶어요' } });
     expect(await screen.findByRole('alert')).toBeInTheDocument();
-    // 위기 최우선 불변: 입력·결과·프로필 전부 미노출.
-    expect(screen.queryByRole('textbox')).toBeNull();
+    // 작성 중 단계(§7.1a): 입력·글 유지, 정책·프로필 미노출.
+    expect(screen.getByRole('textbox', { name: /상황/ })).toHaveValue('죽고 싶어요');
     expect(screen.queryByTestId('policy-result-card')).toBeNull();
     expect(screen.queryByTestId('profile-pill')).toBeNull();
+    // 전송 → 전체 위기 화면(§7.1b): 입력 포함 전부 미노출.
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await screen.findByRole('button', { name: /정책 검색으로 돌아갈게요/ });
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 });
 

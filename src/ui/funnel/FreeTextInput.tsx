@@ -18,6 +18,11 @@ export interface FreeTextInputProps {
   onCrisis: (crisis: boolean) => void;
   /** 전송 시 글 원문을 검색 질의로 전달(위기면 미호출). */
   onSubmit: (query: string) => void;
+  /**
+   * 위기 상태에서 전송(Enter/버튼)을 시도했을 때 호출. 검색 진입은 여전히 0(onSubmit 미호출).
+   * 컨테이너가 "작성 중 인라인 배너 → 제출 시 전체 위기 화면" 전환에 사용(승인안 ①).
+   */
+  onCrisisSubmit?: () => void;
   placeholder?: string;
   /**
    * 렌더 형태(안전 로직 무관):
@@ -31,6 +36,7 @@ export interface FreeTextInputProps {
 export function FreeTextInput({
   onCrisis,
   onSubmit,
+  onCrisisSubmit,
   placeholder = '예) 자취 중인데 월세가 부담돼…',
   variant = 'hero',
 }: FreeTextInputProps) {
@@ -52,9 +58,13 @@ export function FreeTextInput({
     if (text.length === 0) return;
     const crisis = detectCrisisRegex(text).crisis;
     onCrisis(crisis);
-    if (crisis) return; // 위기 → 검색/생성 진입 0.
+    if (crisis) {
+      // 위기 → 검색/생성 진입 0. 컨테이너에 '제출 시도' 신호(전체 위기 화면 전환용, 승인안 ①).
+      onCrisisSubmit?.();
+      return;
+    }
     onSubmit(text);
-  }, [value, onCrisis, onSubmit]);
+  }, [value, onCrisis, onSubmit, onCrisisSubmit]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
