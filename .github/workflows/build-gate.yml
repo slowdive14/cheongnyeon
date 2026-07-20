@@ -1,0 +1,36 @@
+# 프로덕션 빌드 게이트 — push/PR마다 `npm run build`(tsc -b + vite build)를 돌려
+# "조용한 배포 실패"를 커밋 단위에서 즉시 드러낸다(빨간 X + 실패 메일).
+#
+# 배경(2026-07-17 실사고): 테스트 픽스처 타입 에러로 tsc -b가 깨져 Vercel 프로덕션
+# 빌드가 6일간 실패했으나, vitest(런타임)는 그린이라 아무도 인지하지 못했다 —
+# 라이브가 6일 전 버전에 고정됐었다(00c3a70에서 복구). 이 게이트가 그 공백을 막는다.
+name: build-gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 같은 ref의 이전 실행은 취소(최신 커밋만 의미 있음).
+concurrency:
+  group: build-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # tsc -b(src+test 타입 검사) && vite build — Vercel과 동일 명령.
+      - name: Production build
+        run: npm run build
