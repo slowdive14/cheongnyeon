@@ -276,6 +276,9 @@ describe('Test 5.2 — 위기 화면', () => {
     expect(screen.queryByTestId('crisis-footer')).toBeNull();
     expect(main.querySelector('[data-funnel-region="results"]')).toBeNull();
     expect(main.querySelector('[data-funnel-region="examples"]')).toBeNull();
+    // 인라인 배너의 실제 상담 연락처 렌더 잠금(검수 Low-2/L3): 빈 alert만 남는 회귀 차단.
+    expect(screen.getByRole('link', { name: /109/ })).toHaveAttribute('href', 'tel:109');
+    expect(screen.getByRole('link', { name: /1577-0199/ })).toHaveAttribute('href', 'tel:1577-0199');
   });
 
   it('T-IC3 위기 문구 삭제 → 인라인 배너 해제 + 예시 칩 복귀(자동)', async () => {
@@ -292,6 +295,25 @@ describe('Test 5.2 — 위기 화면', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
     fireEvent.change(box, { target: { value: '요즘 조금 지쳐요' } });
     expect(screen.queryByRole('alert')).toBeNull();
+    await screen.findByTestId('choice-chips');
+  });
+
+  it('T-IC5 타이핑 위기 중 브랜드 클릭 → 입력도 함께 초기화(위기 문구 배너 없이 잔존 금지 — Med-1)', async () => {
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={calmTraverse()}
+      />,
+    );
+    const box = await screen.findByLabelText('지금 내 상황');
+    fireEvent.change(box, { target: { value: '죽고 싶다' } });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    // 홈 복귀(브랜드 클릭) → 배너 해제 + 입력 리마운트로 빈 값(위기 문구 잔존 창 제거).
+    fireEvent.click(screen.getByRole('button', { name: /청년정책 나침반/ }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByLabelText('지금 내 상황')).toHaveValue('');
     await screen.findByTestId('choice-chips');
   });
 

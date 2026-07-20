@@ -61,6 +61,11 @@ export function FunnelContainer({
   const [freeCrisis, setFreeCrisis] = useState(false);
   // 위기 상태에서 전송을 시도함 — "제출" 단계(전체 위기 화면). 복귀 링크로만 해제.
   const [crisisCommitted, setCrisisCommitted] = useState(false);
+  // 자유입력 강제 리마운트 세대(Med-1): returnToSearch(브랜드 클릭·복귀 링크)는 FreeTextInput
+  // 내부 value를 직접 비울 수 없다 — 작성 중 위기(1a)에서 브랜드 클릭 시 배너만 사라지고
+  // 위기 문구가 입력에 잔존하는 창이 생긴다(위기·정책 병렬 금지 위반). key 교체로 빈 입력 보장.
+  // 감지·타이핑 중엔 불변이라 1a의 글 보존과 충돌하지 않는다.
+  const [inputEpoch, setInputEpoch] = useState(0);
   // 내 신청함(F-④) — 관심 정책 저장(localStorage). 위기 시 전체 미렌더(early-return)로 자동 격리.
   const savedApi = useSavedPolicies();
   const saveControls = useMemo(
@@ -98,6 +103,9 @@ export function FunnelContainer({
     setFreeCrisis(false);
     setCrisisCommitted(false);
     setQuery('');
+    // Med-1: 입력도 함께 초기화(key 교체 → 리마운트). 1a에서 브랜드 클릭 시
+    // 위기 문구가 배너 없이 입력에 잔존하는 창을 제거한다.
+    setInputEpoch((e) => e + 1);
   }, []);
 
   // ★제출 위기(1b): 배너 최우선·단독(정책·입력·결과·예시·프로필·동행 미렌더). 단 막다른 길이 되지 않게
@@ -218,6 +226,7 @@ export function FunnelContainer({
         {/* 결과 화면(showResultHeader)에선 compact 재검색 바 — 홈은 hero 유지. 위기 로직 불변.
             작성 중 위기에도 언마운트하지 않는다(쓰던 글 보존 — 1a). */}
         <FreeTextInput
+          key={inputEpoch}
           variant={showResultHeader ? 'compact' : 'hero'}
           onCrisis={setFreeCrisis}
           onSubmit={setQuery}
