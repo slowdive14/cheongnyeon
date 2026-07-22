@@ -262,12 +262,12 @@ describe('Test 5.1 — 깔때기 통합 (경로 A journey)', () => {
     });
   });
 
-  it('T-H1 상단 브랜드(청년정책 나침반) 클릭 → 언제나 처음 화면으로(질의 초기화)', async () => {
+  it('T-H1 상단 브랜드(개인 맞춤 청년정책 검색) 클릭 → 언제나 처음 화면으로(질의 초기화)', async () => {
     renderFunnel();
     await journeyToBurnoutResult();
     await screen.findAllByTestId('policy-result-card'); // 결과 화면 진입
     // 상단 브랜드 클릭 → 홈(예시 칩) 복귀, 결과 카드 사라짐.
-    fireEvent.click(screen.getByRole('button', { name: /청년정책 나침반/ }));
+    fireEvent.click(screen.getByRole('button', { name: /개인 맞춤 청년정책 검색/ }));
     await screen.findByTestId('choice-chips');
     expect(screen.queryByTestId('policy-result-card')).toBeNull();
   });

@@ -170,7 +170,7 @@ export function FunnelContainer({
         type="button"
         onClick={returnToSearch}
         title="처음 화면으로"
-        aria-label="청년정책 나침반 — 처음 화면으로"
+        aria-label="개인 맞춤 청년정책 검색 — 처음 화면으로"
         data-funnel-region="header"
         className="mb-5 -m-1 flex items-center gap-2.5 rounded-lg p-1 transition hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay-500"
       >
@@ -181,7 +181,7 @@ export function FunnelContainer({
         >
           <div className="h-[11px] w-[11px] rounded-full border-[2.5px] border-white" />
         </div>
-        <span className="text-sm font-bold tracking-tight text-[#6E5C4E]">청년정책 나침반</span>
+        <span className="text-sm font-bold tracking-tight text-[#6E5C4E]">개인 맞춤 청년정책 검색</span>
       </button>
 
       {/* 인사(홈) / 결과 헤드라인(검색 결과) — 작성 중 위기엔 결과 헤드라인(정책 콘텐츠) 미렌더 */}

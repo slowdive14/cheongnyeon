@@ -311,7 +311,7 @@ describe('Test 5.2 — 위기 화면', () => {
     fireEvent.change(box, { target: { value: '죽고 싶다' } });
     expect(screen.getByRole('alert')).toBeInTheDocument();
     // 홈 복귀(브랜드 클릭) → 배너 해제 + 입력 리마운트로 빈 값(위기 문구 잔존 창 제거).
-    fireEvent.click(screen.getByRole('button', { name: /청년정책 나침반/ }));
+    fireEvent.click(screen.getByRole('button', { name: /개인 맞춤 청년정책 검색/ }));
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByLabelText('지금 내 상황')).toHaveValue('');
     await screen.findByTestId('choice-chips');
