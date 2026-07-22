@@ -28,3 +28,6 @@ supabase/.temp/
 _workspace/
 .claude/agents/
 .claude/skills/
+
+# 개인 블로그·개발 일지(로컬 전용 — 공개 레포에서 제외, 디스크엔 보존)
+docs/blog/
