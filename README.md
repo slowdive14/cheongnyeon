@@ -2,7 +2,7 @@
 
 **개인 맞춤 청년정책 검색**
 
-지금 상황을 편하게 한 줄로 적으면 — 예: _"자취 중인데 월세가 부담돼…"_ — 뜻이 통하는 청년정책을 찾아 **지금 신청할 수 있는 정책**을 안내하고, **내 조건이 자격 요건에 해당하는지**까지 살펴봐 주는 서비스입니다. 정확한 정책 이름이나 검색어를 몰라도 됩니다.
+지금 상황을 편하게 한 줄로 적으면 — 예: _"자취 중인데 월세가 부담돼…"_ — 사용자에게 도움이 될 청년정책을 찾아 **지금 신청할 수 있는 정책**을 안내하고, **내 조건이 자격 요건에 해당하는지**까지 살펴봐 주는 서비스입니다. 정확한 정책 이름이나 검색어를 몰라도 됩니다.
 
 [![build-gate](https://github.com/slowdive14/cheongnyeon/actions/workflows/build-gate.yml/badge.svg)](https://github.com/slowdive14/cheongnyeon/actions/workflows/build-gate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
