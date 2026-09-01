@@ -253,6 +253,47 @@ describe('Test 5.2 — 위기 화면', () => {
     expect(screen.getByLabelText('지금 내 상황')).toHaveValue('다 놓아버리고 싶어요');
   });
 
+  it('P1-9 회귀(안전): 비위기 홈에는 개인정보 안내 렌더 — 부재 단언들의 양성 대조군', async () => {
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={calmTraverse()}
+      />,
+    );
+    expect(await screen.findByTestId('privacy-note')).toBeInTheDocument();
+  });
+
+  it('P1-10 회귀(안전): 타이핑 위기 중 개인정보 안내 미렌더 — 말 끊지 않기', async () => {
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={calmTraverse()}
+      />,
+    );
+    const box = await screen.findByLabelText('지금 내 상황');
+    expect(screen.getByTestId('privacy-note')).toBeInTheDocument(); // 사전 상태(렌더돼 있었음)
+    fireEvent.change(box, { target: { value: '죽고 싶다' } });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByTestId('privacy-note')).toBeNull();
+  });
+
+  it('P1-11 회귀(안전): 제출 위기 전체 화면에도 개인정보 안내 미렌더', async () => {
+    render(
+      <FunnelContainer
+        graph={mentalHealthGraph}
+        profile={PROFILE}
+        deps={baseDeps()}
+        traverseFn={crisisWithEverythingTraverse()}
+      />,
+    );
+    await screen.findByRole('alert');
+    expect(screen.queryByTestId('privacy-note')).toBeNull();
+  });
+
   it('T-IC2 타이핑 위기 중 정책 표면 전부 미렌더(위기·정책 병렬 금지)', async () => {
     render(
       <FunnelContainer

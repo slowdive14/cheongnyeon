@@ -7,6 +7,7 @@ import type { LlmClient } from '@/data/parseChunk';
 import { safetyResources } from '@/domain/safetyResources';
 import { SafetyBanner } from './SafetyBanner';
 import { SafetyInlineNotice } from './SafetyInlineNotice';
+import { PrivacyNote } from './PrivacyNote';
 import { ResultList } from './ResultList';
 import { dedupeYearVariants } from './dedupeYearVariants';
 import { ChoiceChips } from './ChoiceChips';
@@ -284,6 +285,9 @@ export function FunnelContainer({
        <div className="mt-3.5">
          <SavedPolicies items={savedApi.items} onRemove={savedApi.remove} />
        </div>
+
+       {/* 개인정보 안내(P1): 최하단. 위기 화면 미렌더는 이 블록 배치로 보장(별도 분기 불필요). */}
+       <PrivacyNote />
       </div>
      )}
      </div>
