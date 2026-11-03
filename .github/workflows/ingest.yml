@@ -1,8 +1,8 @@
 # 정책 자동 수집 배치 (Phase A) — 온통청년 전량 증분 인제스트 → Supabase.
 #
-# 주기: ⚠️ 한시적 매일 04:00 KST (= 19:00 UTC). 수동 실행(workflow_dispatch) 가능.
+# 주기: ⚠️ 한시적 매일 12:00 KST (= 03:00 UTC). 수동 실행(workflow_dispatch) 가능.
 #       사유: 무료 등급 TPM 한도로 임베딩 결손 664건이 1회 실행당 일부(~80건)씩만 메워진다.
-#       백필 완료(embedding is null = 0) 후 원래 주기 '0 19 * * 0,3'(주 2회 월·목)로 되돌릴 것.
+#       백필 완료(embedding is null = 0) 후 '0 3 * * 1,4'(주 2회 월·목 12:00 KST)로 되돌릴 것.
 # 증분: contentHash 기반 — 변경분만 Gemini(파싱·설명·임베딩) 호출. 평시 비용 몇 원 수준.
 # 실패 알림: Actions 기본 실패 메일(저장소 소유자). 로그 요약은 Step Summary에 기록.
 #
@@ -12,7 +12,7 @@ name: ingest-policies
 
 on:
   schedule:
-    - cron: '0 19 * * *' # 매일 19:00 UTC = 04:00 KST (백필 기간 한시. 복귀값: '0 19 * * 0,3')
+    - cron: '0 3 * * *' # 매일 03:00 UTC = 12:00 KST (백필 기간 한시. 복귀값: '0 3 * * 1,4')
   workflow_dispatch:
     inputs:
       force_explain:
